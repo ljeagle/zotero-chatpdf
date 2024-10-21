@@ -1,12 +1,12 @@
 {
-  "name": "zotero-gpt",
-  "version": "0.2.8",
-  "description": "GPT Meet Zotero",
+  "name": "zotero-chatpdf",
+  "version": "0.0.1",
+  "description": "Integrates Zotero with ChatPDF",
   "config": {
-    "addonName": "Zotero GPT",
-    "addonID": "zoterogpt@polygon.org",
-    "addonRef": "zoterogpt",
-    "addonInstance": "ZoteroGPT",
+    "addonName": "Zotero ChatPDF",
+    "addonID": "zoterochatpdf@chatpdflocal.com",
+    "addonRef": "zoterochatpdf",
+    "addonInstance": "ZoteroChatPDF",
     "releasepage": "",
     "updaterdf": ""
   },
@@ -28,24 +28,26 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MuiseDestiny/zotero-gpt.git"
+    "url": "git+https://github.com/ljeagle/zotero-chatpdf.git"
   },
-  "author": "Polygon",
+  "author": "Vincent",
   "license": "AGPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/MuiseDestiny/zotero-gpt/issues"
+    "url": "https://github.com/ljeagle/zotero-chatpdf/issues"
   },
   "homepage": "",
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.6",
     "@iktakahiro/markdown-it-katex": "^4.0.1",
     "@pinecone-database/pinecone": "^0.0.14",
+    "ansi-styles": "^6.2.1",
     "blueimp-md5": "^2.19.0",
     "chromadb": "^1.3.1",
     "compute-cosine-similarity": "^1.0.0",
     "crypto": "^1.0.1",
     "crypto-js": "^4.1.1",
     "dotenv": "^16.0.3",
+    "fs": "^0.0.1-security",
     "gpt-3-encoder": "^1.1.4",
     "highlight": "^0.2.4",
     "highlight.js": "^11.7.0",
@@ -54,7 +56,7 @@
     "lighten-darken-color": "^1.0.0",
     "markdown-it": "^13.0.1",
     "markdown-it-mathjax3": "^4.3.2",
-    "node-fetch": "^3.3.1",
+    "node-fetch": "^3.3.2",
     "pdf-parse": "^1.1.1",
     "pdfreader": "^3.0.0",
     "proxy-agent": "^5.0.0",
@@ -62,7 +64,7 @@
     "showdown": "^2.1.0",
     "terser": "^5.17.1",
     "zotero-adv-installer": "file:..",
-    "zotero-plugin-toolkit": "^2.0.1"
+    "zotero-plugin-toolkit": "2.1.3"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.1.1",

@@ -10,4 +10,4 @@ You can long press me without releasing, then move me to a suitable position bef
 
 ## About Input Text
 You can type the question in my header, enter and ask me a question.
-You can exit me by pressing Esc above my head and wake me up by pressing Shift + / in the Zotero window.
+You can exit me by pressing Esc above my head and wake me up by pressing meta(ctrl) + enter in the Zotero window.

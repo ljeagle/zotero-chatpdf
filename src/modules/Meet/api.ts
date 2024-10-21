@@ -3,7 +3,8 @@ import {
   getItemField,
   getPDFSelection,
   getRelatedText,
-  getPDFAnnotations
+  getPDFAnnotations,
+  getTranslatingLanguage
 } from "./Zotero"
 
 import {
@@ -16,7 +17,7 @@ import {
 
 import {
   getGPTResponse
-} from "./OpenAI"
+} from "./integratellms"
 import Views from "../views";
 
 const Meet: {
@@ -27,42 +28,44 @@ const Meet: {
   }
 } = {
   /**
-   * 开放给用户
-   * 示例：Meet.Zotero.xxx()
+   * Open to users 
+   * Example: Meet.Zotero.xxx()
    */
   Zotero: {
     /**
-     * 返回系统剪贴板复制的内容
+     * Returns the contents copied from the system clipboard 
      */
     getClipboardText,
     /**
-     * 返回选中条目的某个字段值，多个选中返回第一个选中的某个字段值
-     * @fieldName 接收字段的名称
-     * 比如摘要，Meet.Zotero.getItemField("abstractNote")
+     * Returns a field value of the selected entry. Multiple selections return a field value of the first selected item
+     * @fieldName The received field name
+     * Such as abstract, Meet.Zotero.getItemField("abstractNote")
      */
     getItemField, 
+
+    getTranslatingLanguage,
     /**
-     * 返回阅读PDF时选中的文字
+     * Returns the text selected when reading PDF
      */
     getPDFSelection,
     /**
-     * 返回相关段落，如你选中多条条目，则返回与问题最相关的5个条目
-     * 如果你在PDF中则会读取整个PDF，返回与问题最相关的5个段落
-     * @queryText 接收一个查询字符串
-     * Meet.Zotero.getItemField("本文提到的XXX是什么意思？")
+     * Return relevant paragraphs. If you select multiple items, return the 5 items most relevant to the question
+     * If you are in PDF it will read the entire PDF and return the 5 paragraphs most relevant to the question
+     * @queryText Receive a query string
+     * Meet.Zotero.getItemField("What does the XXX mentioned in this article mean?")
      */
     getRelatedText,
     /**
-     * 获取PDF注释内容
-     * @select 接收一个boolean，是否返回选中的标注
-     * getPDFAnnotations(true) 会返回选中的标注
-     * getPDFAnnotations() 默认返回所有标注
+     * Get PDF annotation content
+     * @select Receives a boolean, whether to return the selected label
+     * getPDFAnnotations(true) Return selected annotation
+     * getPDFAnnotations() Returns all annotations by default
      */
     getPDFAnnotations,
   },
   /**
-   * 部分开放
-   * 下列函数只针对主笔记
+   * Partially open 
+   * The following functions are only for main notes
    */
   BetterNotes: {
     getEditorText,
@@ -71,7 +74,7 @@ const Meet: {
     follow,
     reFocus
   },
-  OpenAI: {
+  integratellms: {
     getGPTResponse
   },
   Global: {

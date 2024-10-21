@@ -2,8 +2,8 @@ import Views from "../views";
 import Meet from "./api";
 
 /**
- * 优先返回选中文本，再返回所在span前所有文字MD
- * @param span 光标所在行，HTMLSpanElement
+ * Prioritize returning the selected text, and then return all the previous text MD in the span
+ * @param The line where the cursor is located, HTMLSpanElement
  * @returns 
  */
 export async function getEditorText(span: HTMLSpanElement) {
@@ -38,7 +38,6 @@ export function replaceEditorText(htmlString: string) {
   const BNEditorApi = Zotero.BetterNotes.api.editor
   const editor = BNEditorApi.getEditorInstance(Zotero.BetterNotes.data.workspace.mainId);
   const range = BNEditorApi.getRangeAtCursor(editor)
-  // 删除原来
   window.setTimeout(async () => {
     await Meet.Global.lock
     Meet.Global.lock = Zotero.Promise.defer() as _ZoteroTypes.PromiseObject
@@ -49,7 +48,7 @@ export function replaceEditorText(htmlString: string) {
 }
 
 /**
- * 在编辑器光标处插入文本
+ * Insert text at the editor cursor
  * @param htmlString 
  */
 export function insertEditorText(htmlString: string, editor?: any) {
@@ -69,10 +68,10 @@ export function insertEditorText(htmlString: string, editor?: any) {
 }
 
 /**
- * 让GPT UI跟随此行
+ * Let UI follow this row
  */
 export function follow() {
-  const views = Zotero.ZoteroGPT.views as Views
+  const views = Zotero.ZoteroChatPDF.views as Views
   const BNEditorApi = Zotero.BetterNotes.api.editor
   const editor = BNEditorApi.getEditorInstance(Zotero.BetterNotes.data.workspace.mainId);
   let getLine: any = (index: number) => {
@@ -81,7 +80,6 @@ export function follow() {
   let place = (reBuild: boolean = false) => {
     const lineIndex = BNEditorApi.getLineAtCursor(editor) + 1
     let line = getLine(lineIndex)
-    // 光标有文字就下一行
     if (line.innerText.replace("\n", "").trim().length != 0) {
       line = getLine(lineIndex+1)
     }
@@ -93,13 +91,9 @@ export function follow() {
       leftPanel.getBoundingClientRect().width
     views.show(x + 30, y + 38, reBuild)
   }
-  // 第一次重建UI
   place(true)
   let id = window.setInterval(async () => {
-    // await Meet.Global.lock;
-    // Meet.Global.lock = Zotero.Promise.defer() as _ZoteroTypes.PromiseObject
     place()
-    // Meet.Global.lock.resolve()
   }, 10)
   views._ids.push({
     type: "follow",

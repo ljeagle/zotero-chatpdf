@@ -3,38 +3,53 @@ import Meet from "./Meet/api"
 import Utils from "./utils";
 import { Document } from "langchain/document";
 import { help, fontFamily, defaultTags, parseTag } from "./base"
+import { getLocalModelDownloadProgress, setApiKey, getSupportedLLMs, ModelConfig, selectModel } from "./Meet/chatpdflocal";
+import { checkFileExist, startLocalLLMEngine, shutdownLocalLLMEngine } from "../hooks";
+
+
 const markdown = require("markdown-it")({
-  breaks: true, // 将行结束符\n转换为 <br> 标签
-  xhtmlOut: true, // 使用 /> 关闭标签，而不是 >
+  breaks: true, // Convert line terminators \n to <br> tags
+  xhtmlOut: true, // Use /> to close the tag, not >
   typographer: true,
   html: true,
 });
 const mathjax3 = require('markdown-it-mathjax3');
 markdown.use(mathjax3);
 
+export function sleep(time) {
+    return new Promise((resolve) => window.setTimeout(resolve, time));
+}
+
 export default class Views {
   private id = "zotero-GPT-container";
   /**
-   * OpenAI接口历史消息记录，需要暴露给GPT响应函数
+   * OpenAI interface historical message records need to be exposed to the GPT response function
    */
   public messages: { role: "user" | "assistant"; content: string }[] = [];
   /**
-   * 用于储存历史执行的输入，配合方向上下键来快速回退
+   * Used to store historical execution input, and use the up and down arrow keys to quickly recall
    */
   private _history: { input: string; output: string }[] = []
   /**
-   * 用于储存上一个执行的标签，配合 Ctrl + Enter 快速再次执行
+   * Used to store the last executed tag and use Ctrl + Enter to quickly execute it again
    */
   private _tag: Tag | undefined;
   /**
-   * 记录当前GPT输出流setInterval的id，防止终止后仍有输出，需要暴露给GPT响应函数
+   * Record the id of the current GPT output stream setInterval to prevent there is still output after termination, which needs to be exposed to the GPT response function
    */
   public _ids: {type: "follow"| "output", id: number}[] = []
+
+  public publisher2models: Map<string, ModelConfig> = new Map() 
+  public publishers: string[] = []
+
+  public supportedLanguages: string[] = []
+
   /**
-   * 是否在笔记环境下
+   * Whether in note-taking environment
    */
   public isInNote: boolean = true
   public container!: HTMLDivElement;
+  private toolbarContainer!: HTMLDivElement; 
   private inputContainer!: HTMLDivElement;
   private outputContainer!: HTMLDivElement;
   private dotsContainer!: HTMLDivElement;
@@ -44,6 +59,7 @@ export default class Views {
     this.utils = new Utils()
     this.registerKey()
     this.addStyle()
+
     // @ts-ignore
     window.Meet = Meet
     Meet.Global.views = this
@@ -95,7 +111,10 @@ export default class Views {
           }
           .gpt-menu-box .menu-item:hover, .gpt-menu-box .menu-item.selected{
             background-color: rgba(89, 192, 188, .23) !important;
-          }
+	  }
+	  .popover.show {
+	    display: block;
+	  }
           #${this.id} .tag {
             position: relative;
             overflow: hidden;
@@ -124,7 +143,6 @@ export default class Views {
           }
         `
       },
-      // #output-container div.streaming span:after,  
     }, document.documentElement);
 
     ztoolkit.UI.appendElement({
@@ -139,7 +157,7 @@ export default class Views {
   }
 
   /**
-   * 设置GPT回答区域文字
+   * Set answer area text
    * @param text 
    * @param isDone 
    */
@@ -155,13 +173,13 @@ export default class Views {
     }
     ready()
     /**
-     * 根据差异渲染，只为保全光标闪烁
+     * Render based on differences, just to preserve cursor blinking
      */
     let md2html = () => {
       let result = markdown.render(text)
         // .replace(/<mjx-assistive-mml[^>]*>.*?<\/mjx-assistive-mml>/g, "")
       /**
-       * 监测差异，替换节点或文字
+       * Monitor differences and replace nodes or text
        * @param oldNode 
        * @param newNode 
        * @returns 
@@ -182,7 +200,7 @@ export default class Views {
             return
           }
         }
-        // 老的比新的多要去除
+        // There are more old ones than new ones and need to be removed
         [...oldNode.childNodes].slice(newNode.childNodes.length).forEach((e: any)=>e.remove())
         for (let i = 0; i < newNode.childNodes.length; i++) {
           if (i < oldNode.childNodes.length) {
@@ -202,7 +220,7 @@ export default class Views {
           }
         }
       }
-      // 纯文本本身不需要MD渲染，防止样式不一致出现变形
+      // Plain text itself does not require MD rendering to prevent deformation due to inconsistent styles
       let _outputDiv = outputDiv.cloneNode(true) as HTMLDivElement
       try {
         _outputDiv.innerHTML = result
@@ -220,7 +238,7 @@ export default class Views {
     // @ts-ignore
     scrollToNewLine && this.outputContainer.scrollBy(0, this.outputContainer.scrollTopMax)
     if (isDone) {
-      // 任何实时预览的错误到最后，应该因为下面这句消失
+      // Any live preview errors at the end should disappear because of the following sentence
       outputDiv.innerHTML = markdown.render(text)
       if (isRecord) {
         this._history.push({ input: Meet.Global.input, output: text })
@@ -228,26 +246,19 @@ export default class Views {
       outputDiv.classList.remove("streaming")
       if (this.isInNote) {
         this.hide()
-        // 下面是完成回答后写入 Better Notes 主笔记的两种方案
+        // The following is written after completing the answer Better Notes. Two options for master notes
         Meet.BetterNotes.insertEditorText(outputDiv.innerHTML)
-        // window.setTimeout(async () => {
-        //   Meet.BetterNotes.insertEditorText(await Zotero.BetterNotes.api.convert.md2html(text))
-        // })
       }
     }
   }
 
-  /**
-   * GPT写的
-   * @param node 
-   */
   private addDragEvent(node: HTMLDivElement) {
     let posX: number, posY: number
     let currentX: number, currentY: number
     let isDragging: boolean = false
 
     function handleMouseDown(event: MouseEvent) {
-      // 如果是input或textarea元素，跳过拖拽逻辑
+      // If it is an input or textarea element, skip the drag logic
       if (
         event.target instanceof window.HTMLInputElement ||
         event.target instanceof window.HTMLTextAreaElement ||
@@ -280,12 +291,7 @@ export default class Views {
   }
 
 
-  /**
-   * GPT写的
-   * @param inputNode 
-   */
   private bindUpDownKeys(inputNode: HTMLInputElement) {
-    // let currentIdx = this._history.length;
     inputNode.addEventListener("keydown", (e) => {
       this._history = this._history.filter(i=>i.input)
       let currentIdx = this._history.map(i=>i.input).indexOf(this.inputContainer!.querySelector("input")!.value)
@@ -317,13 +323,13 @@ export default class Views {
   }
 
   /**
-   * 绑定ctrl+滚轮放大缩小
+   * Bind ctrl+scroll wheel to zoom in and out
    * @param div 
    */
   private bindCtrlScrollZoom(div: HTMLDivElement) {
-      // 为指定的div绑定wheel事件
+      // Bind the wheel event to the specified div
     div.addEventListener('DOMMouseScroll', (event: any) => {
-      // 检查是否按下了ctrl键
+      // Check if the ctrl key is pressed
       if (event.ctrlKey || event.metaKey) {
         let _scale = div.style.transform.match(/scale\((.+)\)/)
         let scale = _scale ? parseFloat(_scale[1]) : 1
@@ -334,11 +340,11 @@ export default class Views {
           div.style.transformOrigin = "center center"
         }
         if (event.detail > 0) {
-          // 缩小
+          // zoom out 
           scale = scale - step
           div.style.transform = `scale(${scale < minScale ? minScale : scale})`;
         } else {
-          // 放大
+          // zoom in
           scale = scale + step
           div.style.transform = `scale(${scale > maxScale ? maxScale : scale})`;
         }
@@ -347,7 +353,7 @@ export default class Views {
   }
 
   /**
-   * 绑定ctrl+滚轮放大缩小控件内的所有元素
+   * Bind the ctrl wheel to zoom in and out of all elements within the control
    * @param div
    */
   private bindCtrlScrollZoomOutput(div: HTMLDivElement) {
@@ -363,7 +369,7 @@ export default class Views {
     type StyleAttributes = {
       [K in StyleAttributeKeys]: string;
     };
-    // 获取子元素的初始样式
+    // Get the initial style of the child element
     const getChildStyles = (child: Element): StyleAttributes => {
       const style = window.getComputedStyle(child);
       const result: Partial<StyleAttributes> = {};
@@ -374,7 +380,7 @@ export default class Views {
       return result as StyleAttributes;
     };
   
-    // 更新并应用子元素的样式
+    // Update and apply styles to child elements
     const applyNewStyles = (child: HTMLElement, style: StyleAttributes, scale: number) => {
       const newStyle = (value: string) => parseFloat(value) * scale + 'px';
   
@@ -382,13 +388,12 @@ export default class Views {
         child.style && (child.style[key as StyleAttributeKeys] = newStyle(style[key as StyleAttributeKeys]))
       }
     };
-    // 为指定的div绑定wheel事件
+    // Bind the wheel event to the specified div
     div.addEventListener('DOMMouseScroll', (event: any) => {
       const children = div.children[0].children;
       if (event.ctrlKey || event.metaKey) {
         const step = 0.05;
         event.preventDefault();
-        // 阻止事件冒泡
         event.stopPropagation();
         const scale = event.detail > 0 ? 1 - step : 1 + step;
         Array.from(children).forEach((child) => {
@@ -400,8 +405,462 @@ export default class Views {
     });
   }
 
+  public createOrUpdateModelsContainer() {
+      var curPublisher = Zotero.Prefs.get(`${config.addonRef}.usingPublisher`) as string
+      const toolbarContainer = this.toolbarContainer
+      if (toolbarContainer == null) {
+          Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, false)
+	  return 
+      }
+      const publishConfigContainer = toolbarContainer.querySelector(".publisher")!
+      var publishSelectContainer = toolbarContainer.querySelector(".publisherSelect")!
+      if (publishSelectContainer) {
+	  publishSelectContainer.remove() 
+      }
+
+      const publishId = "publishid"
+      publishSelectContainer = ztoolkit.UI.appendElement({
+	  tag: "select",
+	  id: publishId,
+	  classList: ["publisherSelect"],
+	  properties: {
+	      value: "",
+	  }
+      }, publishConfigContainer) as HTMLSelectElement//HTMLDivElement
+
+      var publisherSelectIdx = 0 
+      for (var i = 0; i < this.publishers.length; i++) {
+	  if (this.publishers[i] == curPublisher) {
+	      publisherSelectIdx = i 
+	  }	
+	  var optionId = "option" + i 
+	  const optionContainer = ztoolkit.UI.appendElement({
+   	      tag: "option",
+	      id: optionId,
+	      properties: {
+		  innerHTML: this.publishers[i],
+		  value: this.publishers[i]
+	      }
+	  }, publishSelectContainer) as HTMLDivElement
+      }
+      publishSelectContainer.selectedIndex = publisherSelectIdx 
+
+      publishSelectContainer.addEventListener("change", async event => {
+	  event.stopPropagation();
+
+	  curPublisher = publishSelectContainer.value
+	  Zotero.Prefs.set(`${config.addonRef}.usingPublisher`, curPublisher)
+	  var curPublisherElement = this.publisher2models.get(curPublisher)
+	  if (curPublisherElement == null) return 
+	  var curAPIKey: string = curPublisherElement.apiKey
+	  var curAPIUrl: string = curPublisherElement.apiUrl
+	  Zotero.Prefs.set(`${config.addonRef}.usingAPIKEY`, curAPIKey)
+	  Zotero.Prefs.set(`${config.addonRef}.usingAPIURL`, curAPIUrl)
+
+	  for (var i = 0; i < this.publishers.length; i++) {
+	      if (this.publishers[i] == curPublisher) {
+		  publishSelectContainer.selectedIndex = i
+		  break 
+	      }	  
+	  }
+
+	  curShowModels = curPublisherElement.models
+
+	  var modelNode = document.getElementById("modelSelect") as HTMLSelectElement 
+	  if (modelNode != null) {
+	      modelNode.innerHTML = ""
+	  } 
+
+	  for (var i = 0; i < curShowModels.length; i++) {
+	      var optionId = "optionModel" + i
+	      var modelName = curShowModels[i]
+	      if (modelName.includes(":")) {
+	          let index = modelName.indexOf(":")
+                  modelName = modelName.substr(0, index)  		   
+	      }
+	      const optionContainer = ztoolkit.UI.appendElement({
+		  tag: "option",
+		  id: optionId,
+		  properties: {
+	              innerHTML: modelName,
+		      value: modelName 
+		  }
+	      }, modelNode) as HTMLDivElement
+	  }
+	  modelNode.selectedIndex = curPublisherElement.defaultModelIdx
+	  var curModel = curShowModels[modelNode.selectedIndex]
+
+	  Zotero.Prefs.set(`${config.addonRef}.usingModel`, curModel)
+
+	  var apiDivNode = document.getElementById("apidiv") 
+	  if (curPublisher == "Local LLM") {
+	      if (apiDivNode != null) {
+		  apiDivNode.remove()
+	      }
+
+	      const progressContainer = toolbarContainer.querySelector(".progress")! as HTMLProgressElement
+	      if (progressContainer != null) {
+		  progressContainer.remove()  
+	      }
+
+	      var isModelReady = curPublisherElement.areModelsReady.get(curModel)
+	     if (isModelReady)  {
+	         var retValue = await selectModel(curPublisher, curModel)
+	         if (!retValue) {
+   	             Zotero.log("invoke selectModel error!")
+	         }
+	     } else {
+		  var ret = await getLocalModelDownloadProgress(curModel)
+
+		  var trycount = 0
+		  while (ret < 0 || ret > 210) {
+		      if (trycount >= 5) break
+		      await sleep(1000) 
+		      ret = await getLocalModelDownloadProgress(curModel)
+		      trycount = trycount + 1
+		  }
+
+		  if (ret == 200) {
+		      curPublisherElement.areModelsReady.set(curModel, true)
+		  } else if (/*ret == -1 ||*/ (ret >= 0 && ret <= 100)) {
+		      //if (ret == -1) ret = 0
+
+		      const modelConfigContainer = toolbarContainer.querySelector(".model")! as HTMLDivElement
+
+		      if (modelConfigContainer != null) {
+			  const progressContainer = ztoolkit.UI.appendElement({
+		       	      tag: "progress",
+			      id: "progress",
+			      classList: ["progress"],
+			      properties: {
+				  max: "100",
+				  value: ret 
+			      }
+		          }, modelConfigContainer) as HTMLProgressElement
+
+
+			  var timer: undefined | number;
+			  const interval = async () =>{
+		              var ret = await getLocalModelDownloadProgress(curModel)
+
+			      var usingModel = Zotero.Prefs.get(`${config.addonRef}.usingModel`)
+			      if (usingModel != curModel) {
+                                  window.clearTimeout(timer)
+			          return 
+			      }
+
+			      if (ret >= 0 && ret < 100) {
+				  progressContainer.value = ret
+				  timer = window.setTimeout(interval, 2000)
+			      } else {
+				  if (ret == 100 || ret == 200) {
+			   	      var curPublisherElement = this.publisher2models.get(curPublisher)
+				      if (curPublisherElement != null)  { 
+					  curPublisherElement.areModelsReady.set(curModel, true)
+				      }
+				  }
+				  progressContainer.remove() 
+				  window.clearTimeout(timer)
+			      }
+			  }
+
+			  window.setTimeout(interval, 2000)
+		      }
+		  }
+	      }
+	  } else {
+	     if (apiDivNode != null) {
+	         apiDivNode.remove() 
+	     }
+
+	     const progressContainer = toolbarContainer.querySelector(".progress")! as HTMLProgressElement
+	     if (progressContainer != null) {
+		 progressContainer.remove()  
+	     }
+
+             const modelConfigContainer = toolbarContainer.querySelector(".model")! as HTMLDivElement
+	     var apiDivId  = "apidiv"
+	     const apiDivContainer = ztoolkit.UI.appendElement({
+	         tag: "div",
+		 id: apiDivId,
+		 classList: [apiDivId],
+		 styles: {
+		     margin: "6px"
+		 }
+	     }, modelConfigContainer) as HTMLDivElement	
+
+	     var apiId = "api"
+	     var apitext = curPublisher + " API KEY"
+	     var apiContainer: HTMLDivElement
+	     if (curPublisherElement.apiKey.length > 0) {
+ 	         apitext = curPublisherElement.apiKey
+
+		 apiContainer = ztoolkit.UI.appendElement({
+  		     tag: "input",
+		     id: apiId,
+		     styles: {
+		         width: "150px"
+		     },
+		     properties: {
+		         type: "text",
+		         value: apitext
+		     }
+		 }, apiDivContainer) as HTMLDivElement
+	     } else {
+		  apiContainer = ztoolkit.UI.appendElement({
+		      tag: "input",
+		      id: apiId,
+		      styles: {
+			  width: "150px"
+		      },
+		      properties: {
+			  type: "text",
+			  placeholder: apitext
+		      }
+		  }, apiDivContainer) as HTMLDivElement
+	     }
+
+	     apiContainer.addEventListener("change", async event => {
+		 if ((<HTMLInputElement>apiContainer).value == null) return
+		 const curPublisherElement = this.publisher2models.get(curPublisher)
+		     if (curPublisherElement != null) { 
+		         curPublisherElement.apiKey = (<HTMLInputElement>apiContainer).value
+			 Zotero.Prefs.set(`${config.addonRef}.usingAPIKEY`, (<HTMLInputElement>apiContainer).value)
+			 if (curPublisher == "OpenAI") {
+			     Zotero.Prefs.set(`${config.addonRef}.openaiApiKey`, (<HTMLInputElement>apiContainer).value)
+			 } else if (curPublisher == "Claude-3") {
+			     Zotero.Prefs.set(`${config.addonRef}.claudeApiKey`, (<HTMLInputElement>apiContainer).value)
+			 } else if (curPublisher == "Gemini") {
+			     Zotero.Prefs.set(`${config.addonRef}.geminiApiKey`, (<HTMLInputElement>apiContainer).value)
+			 }
+			 if (Zotero.isMac) {
+			     const response = await setApiKey(curPublisher, (<HTMLInputElement>apiContainer).value)
+			 }
+		     }
+	     })
+	  }
+	});
+
+
+	const modelConfigContainer = toolbarContainer.querySelector(".model")! as HTMLDivElement
+
+	var modelSelectDivContainer = toolbarContainer.querySelector(".modelSelectDivCSS")
+  
+	if (modelSelectDivContainer != null) {
+	    modelSelectDivContainer.remove() 
+	} 
+
+	var modelSelectDivId  = "modelSelectDiv"
+	modelSelectDivContainer = ztoolkit.UI.appendElement({
+		  tag: "div",
+		  id: modelSelectDivId,
+		  classList: ["modelSelectDivCSS"],
+		  styles: {
+			  margin: "6px"
+		  }
+	}, modelConfigContainer) as HTMLDivElement	
+
+
+	var modelSelectContainer = toolbarContainer.querySelector(".modelSelect")!
+        if (modelSelectContainer) {
+	    modelSelectContainer.remove()
+        }
+
+	var modelSelectId = "modelSelect"
+	modelSelectContainer = ztoolkit.UI.appendElement({
+		  tag: "select",
+		  id: modelSelectId,
+		  classList: ["modelSelect"],
+	}, modelSelectDivContainer) as HTMLSelectElement // DivElement
+
+	var curShowPublisher = this.publisher2models.get(curPublisher)
+	if (curShowPublisher == null)   { return}
+	var curShowModels = curShowPublisher.models
+
+	for (var i = 0; i < curShowModels.length; i++) {
+	    var optionId = "optionModel" + i
+
+	    var modelName = curShowModels[i]
+	    if (modelName.includes(":")) {
+	        let index = modelName.indexOf(":")
+                modelName = modelName.substr(0, index)  		   
+	    }
+	    const optionContainer = ztoolkit.UI.appendElement({
+	        tag: "option",
+	        id: optionId,
+		properties: {
+	    	    innerHTML: modelName,
+		    value: modelName 
+		}
+	    }, modelSelectContainer) as HTMLDivElement
+	}
+
+        modelSelectContainer.selectedIndex = curShowPublisher.defaultModelIdx
+
+	modelSelectContainer.addEventListener("change", async event => {
+            var curModel = modelSelectContainer.value
+	    Zotero.Prefs.set(`${config.addonRef}.usingModel`, curModel)
+
+
+	    for (var i = 0; i < curShowModels.length; i++) {
+	       if (curModel == curShowModels[i] || curShowModels[i].includes(curModel)) {
+	           modelSelectContainer.selectedIndex = i
+		      var curPublisherElement = this.publisher2models.get(curPublisher)
+		      if (curPublisherElement != null) {
+			  curPublisherElement.defaultModelIdx = i
+		      }
+		      break	    
+		  }	
+	      }
+
+	      if (curPublisher == "Local LLM") {
+		      
+		  const progressContainer = modelConfigContainer.querySelector(".progress")! as HTMLProgressElement
+		  if (progressContainer != null) {
+		      progressContainer.remove()  
+		  }
+		  var curPublisherElement = this.publisher2models.get(curPublisher)
+		  var isModelReady = curPublisherElement.areModelsReady.get(curModel)
+		  if (isModelReady)  {
+		      var retValue = await selectModel(curPublisher, curModel)
+		      if (!retValue) {
+   		          Zotero.log("invoke selectModel error!")
+		      }
+		  } else if  (curPublisherElement != null 
+		      && !isModelReady) {
+		      var ret = await getLocalModelDownloadProgress(curModel)
+
+		      var trycount = 0
+		      while (ret < 0 || ret > 210) {
+			 if (trycount >= 5) break
+		         await sleep(1000) 
+		         ret = await getLocalModelDownloadProgress(curModel)
+			 trycount = trycount + 1
+		      }
+		       
+		      if (ret == 200) {
+		          curPublisherElement.areModelsReady.set(curModel, true)
+		      } else if (/*ret == -1 ||*/ (ret >= 0 && ret <= 100)) {
+		          //if (ret == -1) ret = 0
+
+			  const progressContainer = ztoolkit.UI.appendElement({
+			      tag: "progress",
+			      id: "progress",
+			      classList: ["progress"],
+			      properties: {
+			          max: "100",
+				  value: ret 
+			      }
+			  }, modelConfigContainer) as HTMLProgressElement
+			  var timer: undefined | number;
+			  const interval = async () =>{
+			      var ret = await getLocalModelDownloadProgress(curModel)
+
+	                      var usingModel = Zotero.Prefs.get(`${config.addonRef}.usingModel`)
+			      if (usingModel != curModel) {
+                                  window.clearTimeout(timer)
+			          return 
+			      }
+			      if (ret >= 0 && ret < 100) {
+			          progressContainer.value = ret
+				  timer = window.setTimeout(interval, 2000)
+			      } else if (ret == 100 || ret == 200) {
+			          var curPublisherElement = this.publisher2models.get(curPublisher)
+				  if (curPublisherElement != null) { 
+				      curPublisherElement.areModelsReady.set(curModel, true)
+				  }
+				  progressContainer.remove() 
+				  window.clearTimeout(timer)
+			      }
+			  }
+
+  		          window.setTimeout(interval, 2000)
+		      }
+	          }
+	      }
+	  });
+
+	  var curPublisherConfig = this.publisher2models.get(curPublisher)
+	  if (curPublisherConfig != null) { 
+	      if (curPublisherConfig != null && curPublisherConfig.hasApiKey) {
+		  var apiDivId  = "apidiv"
+
+                  var apiDivContainer = toolbarContainer.querySelector(".apidiv")!
+                  if (apiDivContainer) {
+	              apiDivContainer.remove()
+                  }
+
+		  apiDivContainer = ztoolkit.UI.appendElement({
+		      tag: "div",
+		      id: apiDivId,
+		      classList: [apiDivId], 
+		      styles: {
+			  margin: "6px"
+		      }
+		  }, modelConfigContainer) as HTMLDivElement	
+
+		  var apiId = "api"
+		  var apitext = curPublisher + " API KEY"
+		  if (curPublisherConfig.apiKey.length > 0) {
+		      apitext = curPublisherConfig.apiKey
+		  }
+
+		  var apiContainer: HTMLDivElement
+		  if (curPublisherConfig.apiKey.length > 0) {
+		      apitext = curPublisherConfig.apiKey
+
+		      apiContainer = ztoolkit.UI.appendElement({
+			  tag: "input",
+			  id: apiId,
+			  styles: {
+			      width: "150px"
+			  },
+			  properties: {
+			      type: "text",
+			      value: apitext
+			  }
+		      }, apiDivContainer) as HTMLDivElement
+
+		  } else {
+		      apiContainer = ztoolkit.UI.appendElement({
+			  tag: "input",
+			  id: apiId,
+			  styles: {
+			      width: "150px"
+			  },
+			  properties: {
+			      type: "text",
+			      placeholder: apitext
+			  }
+		      }, apiDivContainer) as HTMLDivElement
+		  }
+
+		  apiContainer.addEventListener("change", async event => {
+		      var curPublisherElement =  this.publisher2models.get(curPublisher)
+		      if (curPublisherElement != null) {
+			  curPublisherElement.apiKey = (<HTMLInputElement>apiContainer).value
+			  Zotero.Prefs.set(`${config.addonRef}.usingAPIKEY`, curPublisherElement.apiKey)
+
+                          if (curPublisher == "OpenAI") {
+			      Zotero.Prefs.set(`${config.addonRef}.openaiApiKey`, (<HTMLInputElement>apiContainer).value)
+			  } else if (curPublisher == "Claude-3") {
+			      Zotero.Prefs.set(`${config.addonRef}.claudeApiKey`, (<HTMLInputElement>apiContainer).value)
+			  } else if (curPublisher == "Gemini") {
+			      Zotero.Prefs.set(`${config.addonRef}.geminiApiKey`, (<HTMLInputElement>apiContainer).value)
+			  }
+
+			  if (Zotero.isMac) {
+		  	    const response = await setApiKey(curPublisher, curPublisherElement.apiKey)
+			  }
+		      }
+		  })
+	      }
+	  }
+      }
+
+
+
   private buildContainer() {
-    // 顶层容器
     const container = ztoolkit.UI.createElement(document, "div", {
       id: this.id,
       styles: {
@@ -419,11 +878,719 @@ export default class Views {
                     0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
                     0px 30px 90px rgba(0, 0, 0, 0.2)`,
         fontFamily: fontFamily,
+	zIndex:1
       }
     })
     this.addDragEvent(container)
     this.bindCtrlScrollZoom(container)
-    // 输入
+
+    var curPublisher = Zotero.Prefs.get(`${config.addonRef}.usingPublisher`) as string
+    var curModel =  Zotero.Prefs.get(`${config.addonRef}.usingModel`) as string
+
+    // toolbar
+    const toolbarContainer = this.toolbarContainer = ztoolkit.UI.appendElement({
+      tag: "div",
+      id: "toolbar-container",
+      styles: {
+        borderBottom: "1px solid #f6f6f6",
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+      },
+
+      children: [
+        {
+          tag: "div",
+	  id: "publishers",
+          classList: ["publisher"],
+          styles: {
+            margin: "6px",
+	    float: "left"
+          }
+        },
+        {
+	  tag: "div",
+	  id: "models",
+          classList: ["model"],
+          styles: {
+            margin: "6px",
+	    float: "left"
+          }
+        },
+
+	{
+	  tag: "div",
+	  id: "registers",
+          classList: ["register"],
+          styles: {
+            marginLeft: "30%",
+	    float: "right",
+	    color: "blue",
+	    fontSize: "20px"
+          },
+		 
+	  children: [
+            {
+              tag: "img",
+	      id: "registerImg",
+              classList: ["registerImg"],
+              styles: {
+		width: "20px",
+		height: "20px",
+		backgroundColor: "#fff",
+	      },
+	      properties: {
+	          src: `chrome://${config.addonRef}/content/icons/subscribe.png`
+	      }
+           }
+	  ]
+	  
+	}
+
+      ]
+    }, container) as HTMLDivElement
+
+    //create
+    this.createOrUpdateModelsContainer()
+    
+    const registerContainer = toolbarContainer.querySelector(".register")! as HTMLDivElement
+    
+    registerContainer.addEventListener("mouseup", async event => {
+        window.alert = function(msg, container) {
+
+	    const backgroundContainer = ztoolkit.UI.createElement(document, "div", {
+	      id: "languagesBg",
+	      styles: {
+                display: "block",
+		flexDirection: "column",
+		justifyContent: "flex-start",
+		alignItems: "center",
+		position: "fixed",
+	        width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+		fontSize: "18px",
+		borderRadius: "10px",
+		backgroundColor: "#000",
+		boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+		0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+		0px 30px 90px rgba(0, 0, 0, 0.2)`,
+		fontFamily: fontFamily,
+		opacity: 0.6,
+		zIndex:2, 
+              },
+            })
+
+            const subscriberShowContainer = ztoolkit.UI.createElement(document, "div", {
+	      id: "subscriber",
+	      styles: {
+                display: "none",
+	        //flexDirection: "column",
+	        //justifyContent: "center",
+		//alignItems: "center",
+		position: "fixed",
+		width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+		fontSize: "18px",
+		borderRadius: "10px",
+		backgroundColor: "#fff",
+		boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+		0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+		0px 30px 90px rgba(0, 0, 0, 0.2)`,
+		fontFamily: fontFamily,
+		zIndex:3, 
+	      },
+            })
+
+            const subscriberCloseContainer = ztoolkit.UI.appendElement({
+		tag: "div",
+		id: "subscriberClose",
+		styles: {
+		  display: "flex",
+		  flexDirection: "column",
+		  justifyContent: "flex-start",
+		  //justifyContent: "center",
+		  alignItems: "start",
+		  position: "fixed",
+		  //width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+		  fontSize: "15px",
+		  borderRadius: "10px",
+		  backgroundColor: "#fff",
+		  boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+		  0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+		  0px 30px 90px rgba(0, 0, 0, 0.2)`,
+		  fontFamily: fontFamily,
+		  color: "#1e90ff",
+		  cursor: "pointer",
+		  zIndex:3, 
+		  margin: "10px" 
+		},
+		properties: {
+		  value: "",
+		  innerHTML: "X" 
+		}
+	    }, subscriberShowContainer) as HTMLDivElement
+
+            subscriberCloseContainer.addEventListener("click", async event => {
+	         event.stopPropagation();
+                 backgroundContainer.style.display = "none"
+		 subscriberShowContainer.style.display = "none" 
+            })
+
+
+            const subscriberNoteContainer = ztoolkit.UI.appendElement({
+		tag: "div",
+		id: "subscriberNote",
+		styles: {
+		  display: "flex",
+		  //flexDirection: "column",
+	          justifyContent: "center",
+		  position: "fixed",
+		  width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+		  fontSize: "25px",
+		  //borderRadius: "10px",
+		  //backgroundColor: "#fff",
+		  //boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+		  //0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+		  //0px 30px 90px rgba(0, 0, 0, 0.2)`,
+		  fontFamily: fontFamily,
+		  //color: "#1e90ff",
+		  //cursor: "pointer",
+		  zIndex:3, 
+		  //margin: "10px" 
+		},
+		
+		properties: {
+		  value: "",
+		  innerHTML: "Thank you for using zotero-chatpdf!" 
+		}
+	    }, subscriberCloseContainer) as HTMLDivElement
+	   
+	    const grade = Zotero.Prefs.get(`${config.addonRef}.grade`) as string
+	    const imgLink =  `chrome://${config.addonRef}/content/icons/` + grade + ".png"
+            const subscriberGradeContainer = ztoolkit.UI.appendElement({
+		tag: "img",
+		id: "subscriberGrade",
+		styles: {
+		  display: "flex",
+		  justifyContent: "center",
+		  position: "fixed",
+		  width: "64px",
+		  height: "64px",
+		  backgroundColor: "#fff",
+		  margin: "50px"
+		},
+		
+		properties: {
+	          src: imgLink
+		}
+	    }, subscriberNoteContainer) as HTMLDivElement
+
+            
+
+	    const registerWrapContainer = ztoolkit.UI.createElement(document, "div", {
+	      id: "registerWrap",
+		  styles: {
+                      display: "flex",
+		      flexDirection: "column",
+		      //justifyContent: "flex-start",
+		      justifyContent: "center",
+		      alignItems: "center",
+		      position: "fixed",
+		      width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+		      fontSize: "18px",
+		      borderRadius: "10px",
+		      backgroundColor: "#fff",
+		      boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+		      0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+		      0px 30px 90px rgba(0, 0, 0, 0.2)`,
+		      fontFamily: fontFamily,
+		      //cursor: "pointer",
+		      //spacing: "20px", 
+		      zIndex:3, 
+
+	          },
+            })
+
+        
+            const subscribeContainer = ztoolkit.UI.appendElement({
+	        tag: "input", 
+		id: "subscribeInput",
+	        styles: {
+			display: "flex",
+			flexDirection: "column",
+			//justifyContent: "flex-start",
+			justifyContent: "center",
+			alignItems: "center",
+			position: "fixed",
+			width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+			fontSize: "15px",
+			borderRadius: "10px",
+			backgroundColor: "#fff",
+			boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+			0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+			0px 30px 90px rgba(0, 0, 0, 0.2)`,
+			fontFamily: fontFamily,
+			zIndex:3, 
+
+		},
+		properties: {
+		    type: "text",
+	            placeholder: "Email" 
+		}
+            }, registerWrapContainer) as HTMLDivElement
+
+            const subscribeWarnNoteContainer = ztoolkit.UI.appendElement({
+	        tag: "div", 
+		id: "subscribeWarnNote",
+	        styles: {
+			display: "none",
+			flexDirection: "column",
+			//justifyContent: "flex-start",
+			justifyContent: "center",
+			alignItems: "center",
+			position: "fixed",
+			width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+			fontSize: "12px",
+			color: "red",
+			//borderRadius: "10px",
+			//backgroundColor: "#fff",
+			//boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+			//0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+			//0px 30px 90px rgba(0, 0, 0, 0.2)`,
+			fontFamily: fontFamily,
+			//cursor: "pointer",
+			zIndex:3, 
+
+		},
+		properties: {
+	            innerHTML: "" 
+		}
+            }, registerWrapContainer) as HTMLDivElement
+
+
+	    const verifyWarnNoteContainer = ztoolkit.UI.appendElement({
+	        tag: "div", 
+		id: "verifyWarnNote",
+	        styles: {
+			display: "none",
+			flexDirection: "column",
+			//justifyContent: "flex-start",
+			justifyContent: "center",
+			alignItems: "center",
+			position: "fixed",
+			width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+			fontSize: "12px",
+			color: "red",
+			//borderRadius: "10px",
+			//backgroundColor: "#fff",
+			//boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+			//0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+			//0px 30px 90px rgba(0, 0, 0, 0.2)`,
+			fontFamily: fontFamily,
+			//cursor: "pointer",
+			zIndex:3, 
+
+		},
+		properties: {
+	            innerHTML: "" 
+		}
+            }, registerWrapContainer) as HTMLDivElement
+
+            
+	    const registerNoteContainer = ztoolkit.UI.appendElement({
+		tag: "div",
+		id: "registerNote",
+		styles: {
+		  display: "flex",
+		  flexDirection: "column",
+		  //justifyContent: "flex-start",
+		  //justifyContent: "center",
+		  //alignItems: "center",
+		  position: "fixed",
+		  width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+		  fontSize: "15px",
+		  //borderRadius: "10px",
+		  //backgroundColor: "#fff",
+		  //boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+		  //0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+		  //0px 30px 90px rgba(0, 0, 0, 0.2)`,
+		  fontFamily: fontFamily,
+		  //color: "#1e90ff",
+		  //cursor: "pointer",
+		  zIndex:3, 
+		  //margin: "20px" 
+		},
+		
+		properties: {
+		  value: "",
+		  innerHTML: "Now subscribe for free to get the enhanced features:<br/> 1. For Mac users, chat with local SOTA LLMs(llama) without pay.<br/> 2. Access GPT-4o, Gemini and Claude in one client.<br/> 3. Secure for your data, All stored locally, not upload to the Cloud." 
+		}
+	     }, registerWrapContainer) as HTMLDivElement
+
+	    const closeContainer = ztoolkit.UI.appendElement({
+		tag: "div",
+		id: "close",
+		styles: {
+		  display: "flex",
+		  flexDirection: "column",
+		  position: "fixed",
+		  width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+		  fontSize: "15px",
+		  borderRadius: "10px",
+		  backgroundColor: "#fff",
+		  boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+		  0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+		  0px 30px 90px rgba(0, 0, 0, 0.2)`,
+		  fontFamily: fontFamily,
+		  color: "#1e90ff",
+		  cursor: "pointer",
+		  zIndex:3, 
+		  margin: "20px" 
+		},
+		properties: {
+		  value: "",
+		  innerHTML: "X" 
+		}
+	     }, registerWrapContainer) as HTMLDivElement
+
+             closeContainer.addEventListener("click", async event => {
+	         event.stopPropagation();
+                 backgroundContainer.style.display = "none"
+		 registerWrapContainer.style.display = "none" 
+             })
+
+             const subscribeSubmitContainer = ztoolkit.UI.appendElement({
+	       tag: "div",
+	       id: "subscribeSubmit",
+	       styles: {
+	          display: "flex",
+		  flexDirection: "column",
+                  justifyContent: "center",
+			alignItems: "center",
+			position: "fixed",
+
+		   backgroundColor: "#fff",
+		   fontSize: "15px", 
+		   boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+		   0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+		   0px 30px 90px rgba(0, 0, 0, 0.2)`,
+		   borderRadius: "8px",
+                   border: "1px solid #fff",
+		   cursor: "pointer",
+		   whiteSpace: "nowrap",
+		   zIndex: 3
+	       }, 
+	       properties: {
+	           innerHTML: "Subscribe" 
+	       },
+	       listeners: [
+		 { 
+	           type: "mousedown",
+                   listener: (event: any) => {
+		     subscribeSubmitContainer.style.backgroundColor = "#C0C0C0"; 
+		   }
+		 },
+		 {
+	           type: "mouseup",
+		   listener: async (event: any) => {
+		     event.stopPropagation();
+		     var emailRegExp=/^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
+                     var ok = emailRegExp.test(subscribeContainer.value)
+		 
+		     var message = ""
+		     let res
+		     if (ok) {
+		       subscribeContainer.style.border = ""
+                       const url = `https://www.chatpdflocal.com/api/zoterosubscribe` 
+		       try {
+			 res = await Zotero.HTTP.request(
+		             "POST",
+			     url,
+			     {
+			         responseType: "json",
+				 headers: {
+				     "Content-Type": "application/json",
+				 },
+				 body: JSON.stringify({
+				     email: subscribeContainer.value
+				 }),
+			     })
+		       } catch (error: any) {
+			     message = "Network error! Please check your network and try it again!"
+		              
+			     subscribeWarnNoteContainer.style.display = "flex"
+			     subscribeWarnNoteContainer.innerHTML = message
+		             subscribeContainer.style.border = "1px solid red"
+		       }
+
+		       if (res?.response) {
+			 var code = res.response.status
+			 if (code == 200) {
+			     message = "Success! Please check license in email and activate!"
+			     subscribeWarnNoteContainer.style.display = "flex"
+			     subscribeWarnNoteContainer.innerHTML = message
+			     subscribeWarnNoteContainer.style.color = "green" 
+			     subscribeWarnNoteContainer.style.justifyContent = "flex-start" 
+			 } else {
+			     message = res.response.message 
+			     subscribeWarnNoteContainer.style.display = "flex"
+			     subscribeWarnNoteContainer.innerHTML = message
+			     subscribeContainer.style.border = "1px solid red"
+			 }
+		       }
+		     } else {
+		       message = "Email not valid!"
+		       subscribeContainer.style.border = "1px solid red"
+		       subscribeWarnNoteContainer.style.display = "flex"
+		       subscribeWarnNoteContainer.innerHTML = message 
+		     }
+
+		     subscribeSubmitContainer.style.backgroundColor = "#fff"; 
+		   }
+		 }
+	       ]
+	     }, registerWrapContainer) as HTMLSelectElement
+
+
+		     const licenseContainer = ztoolkit.UI.appendElement({
+			tag: "input", 
+			id: "lcenseInput",
+			styles: {
+				display: "flex",
+				flexDirection: "column",
+				//justifyContent: "flex-start",
+				justifyContent: "center",
+				alignItems: "center",
+				position: "fixed",
+				width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+				fontSize: "15px",
+				borderRadius: "10px",
+				backgroundColor: "#fff",
+				boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+				0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+				0px 30px 90px rgba(0, 0, 0, 0.2)`,
+				fontFamily: fontFamily,
+				//color: "#1e90ff",
+				//cursor: "pointer",
+				//spacing: "20px", 
+				zIndex:3, 
+
+			},
+			properties: {
+			    type: "text",
+			    placeholder: "License" 
+			}
+		    }, registerWrapContainer) as HTMLDivElement
+
+		    const verifyLicenseContainer = ztoolkit.UI.appendElement({
+			tag: "div",
+			id: "verifyLicense",
+			styles: {
+			  display: "flex",
+			  flexDirection: "column",
+			  justifyContent: "center",
+			  alignItems: "center",
+			  position: "fixed",
+			  width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+			  fontSize: "15px",
+			  borderRadius: "8px",
+			  backgroundColor: "#fff",
+			  boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+			  0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+			  0px 30px 90px rgba(0, 0, 0, 0.2)`,
+			  fontFamily: fontFamily,
+			  cursor: "pointer",
+			  zIndex:3, 
+		        },
+		        properties: {
+		          value: "",
+		          innerHTML: "Activate" 
+		        },
+                        listeners: [
+		          { 
+	                    type: "mousedown",
+                            listener: (event: any) => {
+		              verifyLicenseContainer.style.backgroundColor = "#C0C0C0"; 
+		            }
+		          },
+		          {
+	                    type: "mouseup",
+		            listener: async (event: any) => {
+		              event.stopPropagation();
+		
+			      let res
+			      const url = `https://www.chatpdflocal.com/api/zoteroactivate`
+			      try {
+				      res = await Zotero.HTTP.request(
+					      "POST",
+					      url,
+					      {
+						      responseType: "json",
+						      headers: {
+							      "Content-Type": "application/json",
+						      },
+						      body: JSON.stringify({
+							      email: subscribeContainer.value,
+							      license: licenseContainer.value, 
+						      }),
+					      })
+			      } catch (error: any) {
+				      licenseContainer.style.border = "1px solid red"
+				      verifyWarnNoteContainer.style.display = "flex"
+				      verifyWarnNoteContainer.innerHTML = "Network error! Please check your network and try it again!"
+			      }
+
+			      if (res?.response) {
+				      if (res.response.status && res.response.status == 200) {
+					      const email =  subscribeContainer.value
+					      const token = licenseContainer.value
+					      Zotero.Prefs.set(`${config.addonRef}.email`, email) 	
+					      Zotero.Prefs.set(`${config.addonRef}.token`, token) 	
+					      Zotero.Prefs.set(`${config.addonRef}.isLicenseActivated`, true) 
+					      Zotero.Prefs.set(`${config.addonRef}.grade`, res.response.grader) 	
+
+
+					      await Zotero[config.addonInstance].views.updatePublisherModels(email, token)
+					      Zotero[config.addonInstance].views.createOrUpdateModelsContainer()
+
+
+					      backgroundContainer.style.display = "none" 
+
+					      registerWrapContainer.style.display = "none" 
+
+					      return	    
+				      } else {
+					      licenseContainer.style.border = "1px solid red"
+					      verifyWarnNoteContainer.style.display = "flex"
+					      verifyWarnNoteContainer.innerHTML = res.response.message
+					      return 
+				      }
+			      } 
+
+			      verifyLicenseContainer.style.backgroundColor = "#fff"; 
+			    }
+			  }]
+		    }, registerWrapContainer) as HTMLDivElement
+
+
+	     var curShowContainer = registerWrapContainer
+             var isActivated = Zotero.Prefs.get(`${config.addonRef}.isLicenseActivated`)
+             if (isActivated) {
+	       registerWrapContainer.style.display = "none"
+	       subscriberShowContainer.style.display = "flex"
+	       curShowContainer = subscriberShowContainer 
+	     } 
+
+	     document.documentElement.append(backgroundContainer)
+             document.documentElement.append(subscriberShowContainer)
+             document.documentElement.append(registerWrapContainer)
+
+             backgroundContainer.style.display = "flex"
+		      
+	     backgroundContainer.style.height = "50%" 
+	     backgroundContainer.style.width = container.style.width 
+
+	     backgroundContainer.style.left = container.style.left 
+	     backgroundContainer.style.top = container.style.top 
+
+
+	     var x = -1
+	     var y = -1
+	     if (x + y < 0) {
+	       const rect = document.documentElement.getBoundingClientRect()
+	       //x = rect.width / 2 - registerWrapContainer.offsetWidth / 2;
+	       x = rect.width / 2 - curShowContainer.offsetWidth / 2;
+	       //y = rect.height / 2 - registerWrapContainer.offsetHeight / 2;
+	       y = rect.height / 2 - curShowContainer.offsetHeight / 2;
+	     }
+
+	     // ensure container doesn't go off the right side of the screen
+	     //if (x + registerWrapContainer.offsetWidth > window.innerWidth) {
+	     if (x + curShowContainer.offsetWidth > window.innerWidth) {
+	       //x = window.innerWidth - registerWrapContainer.offsetWidth
+	       x = window.innerWidth - curShowContainer.offsetWidth
+	     }
+
+	     // ensure container doesn't go off the bottom of the screen
+	     //if (y + registerWrapContainer.offsetHeight > window.innerHeight) {
+	     if (y + curShowContainer.offsetHeight > window.innerHeight) {
+	       //y = window.innerHeight - registerWrapContainer.offsetHeight
+	       y = window.innerHeight - curShowContainer.offsetHeight
+	     }
+
+             // ensure container doesn't go off the left side of the screen
+             if (x < 0) {
+ 	       x = 0
+             }
+
+		      // ensure container doesn't go off the top of the screen
+		      if (y < 0) {
+			      y = 0
+		      }
+		      // this.container.style.display = "flex"
+		  
+
+		      registerWrapContainer.style.left = `${x}px`
+		      registerWrapContainer.style.top = `${y}px`
+		      registerWrapContainer.style.height = "300px" 
+
+	              subscriberShowContainer.style.left = `${x}px` 
+	              subscriberShowContainer.style.top = `${y}px` 
+	              subscriberShowContainer.style.height = "150px" 
+
+
+		      closeContainer.style.left = `${x}px` 
+		      closeContainer.style.top = `${y}px`
+		      closeContainer.style.width = "6px" 
+		      closeContainer.style.height = "6px"
+
+		      subscriberCloseContainer.style.width = "6px" 
+		      subscriberCloseContainer.style.height = "6px"
+
+		       
+		      registerNoteContainer.style.left = `${x + container.clientWidth * 0.1}px`
+		      registerNoteContainer.style.top = `${y + 20}px`
+		      registerNoteContainer.style.width = `${container.clientWidth * 0.85}px`
+		      registerNoteContainer.style.height = "100px"
+                       
+		      subscribeContainer.style.left = `${x + container.clientWidth * 0.2}px`
+		      subscribeContainer.style.top = `${y + 135}px`
+		      subscribeContainer.style.width = `${container.clientWidth * 0.6}px` 
+		      subscribeContainer.style.height = "32px"
+	           
+		      subscribeWarnNoteContainer.style.left = `${x + container.clientWidth * 0.2}px`
+		      subscribeWarnNoteContainer.style.top = `${y + 172}px` 
+		      subscribeWarnNoteContainer.style.width = `${container.clientWidth * 0.6}px` 
+		      subscribeWarnNoteContainer.style.height = "28px" 
+
+
+	              subscribeSubmitContainer.style.left = `${x + container.clientWidth * 0.8 + 15}px`
+		      subscribeSubmitContainer.style.top = `${y + 134}px`
+		      subscribeSubmitContainer.style.width = "68px" 
+		      subscribeSubmitContainer.style.height = "39px"
+	            
+                      verifyLicenseContainer.style.left = `${x + container.clientWidth * 0.8 + 15}px` 
+                      verifyLicenseContainer.style.top = `${y + 210}px` 
+                      verifyLicenseContainer.style.width = "68px" 
+                      verifyLicenseContainer.style.height = "39px" 
+
+
+
+		      
+		      
+		      licenseContainer.style.left = `${x + container.clientWidth * 0.2}px`      
+	              licenseContainer.style.top = 	`${y + 210}px`
+	              licenseContainer.style.width = 	`${container.clientWidth * 0.6}px`      
+	              licenseContainer.style.height = 	 "32px"     
+	
+		      verifyWarnNoteContainer.style.left = `${x + container.clientWidth * 0.2}px`
+		      verifyWarnNoteContainer.style.top = `${y + 240}px` 
+		      verifyWarnNoteContainer.style.width = `${container.clientWidth * 0.6}px` 
+		      verifyWarnNoteContainer.style.height = "28px" 
+	
+	}
+        window.alert('Subscribe', this.container!);
+      })
+           
+    // input 
     const inputContainer = this.inputContainer = ztoolkit.UI.appendElement({
       tag: "div",
       id: "input-container",
@@ -466,7 +1633,6 @@ export default class Views {
           }
         }
       ]
-
     }, container) as HTMLDivElement
     const inputNode = inputContainer.querySelector("input")!
     this.bindUpDownKeys(inputNode)
@@ -479,13 +1645,13 @@ export default class Views {
       // @ts-ignore
       let text = Meet.Global.input = this.value
       if ((event.ctrlKey || event.metaKey) && ["s", "r"].indexOf(event.key) >= 0 && textareaNode.style.display != "none") {
-        // 必定保存，但未必运行
+        // must save，but not necessary to execute
         const tag = parseTag(text)
         if (tag) {
           // @ts-ignore
           this.value = tag.text
           let tags = that.getTags()
-          // 如果tags存在，可能是更新，先从tags里将其移除
+	  // If tags exist, maybe to update, removed from tags
           tags = tags.filter((_tag: Tag) => {
             return _tag.tag != tag.tag
           })
@@ -498,16 +1664,15 @@ export default class Views {
               .show()
             return
           }
-          // 运行代码，并保存标签
+          // Execute codes, and then save the tags
           if (event.key == "r") {
             return that.execTag(tag)
           }
         }
-        // 普通文本
+        // normal text
         else {
-          // 运行文本呢
           if (event.key == "r") {
-            // 长文本当作未保存的命令标签执行，长文本里可以写js
+            // Long text is executed as an unsaved command label, You can write js in long text
             return that.execTag({tag: "Untitled", position: -1, color: "", trigger: "", text})
           }
         }
@@ -517,14 +1682,11 @@ export default class Views {
         
         outputContainer.querySelector(".auxiliary")?.remove()
 
-        // 同时按Ctrl，会点击第一个标签
         if (event.ctrlKey || event.metaKey) {
-          // 查找第一个点击
           ztoolkit.log("Ctrl + Enter")
           let tag = that._tag || that.getTags()[0]
           return that.execTag(tag)
         }
-        // 按住Shift，进入长文本编辑模式，此时应该通过Ctrl+R来运行
         if (event.shiftKey) {
           if (inputNode.style.display != "none") {
             inputNode.style.display = "none"
@@ -534,7 +1696,6 @@ export default class Views {
           }
           return
         }
-        // 优先级最高，防止中文输入法回车转化成英文
         if (text.length != lastInputText.length) {
           lastInputText = text
           return
@@ -544,7 +1705,6 @@ export default class Views {
             inputNode.style.display = "none"
             textareaNode.style.display = ""
             textareaNode.focus()
-            // 判断本地是否存在这个标签
             const tags = that.getTags();
             const tag = tags.find((tag: any) => tag.text.startsWith(text.split("\n")[0]))
             if (tag) {
@@ -555,8 +1715,6 @@ export default class Views {
           }
         } else if (text.startsWith("/")) {
           that._history.push(text)
-          // 尝试结束其它stream的生命
-          // that._id = undefined
           that.stopAlloutput()
           text = text.slice(1)
           let [key, value] = text.split(" ")
@@ -569,9 +1727,6 @@ export default class Views {
             that.setText(help, true, false)
           } else if (key == "report") { 
             const secretKey = Zotero.Prefs.get(`${config.addonRef}.secretKey`) as string
-            // window.setTimeout(() => {
-            //   Zotero.launchURL("https://platform.openai.com/account/usage")
-            // }, 1000)
             return that.setText(`\`api\` ${Zotero.Prefs.get(`${config.addonRef}.api`)}\n\`secretKey\` ${secretKey.slice(0, 3) + "..." + secretKey.slice(-4)}\n\`model\` ${Zotero.Prefs.get(`${config.addonRef}.model`)}\n\`temperature\` ${Zotero.Prefs.get(`${config.addonRef}.temperature`)}`, true, false)
           } else if (["secretKey", "model", "api", "temperature", "deltaTime", "width", "tagsMore", "chatNumber", "relatedNumber"].indexOf(key) >= 0) {  
             if (value?.length > 0) {
@@ -626,7 +1781,7 @@ export default class Views {
         }
       } else if (event.key == "Escape") {
         outputContainer.style.display = "none"
-        // 退出长文编辑模式
+        // Exit long article editing mode
         if (textareaNode.style.display != "none") {
           textareaNode.style.display = "none"
           inputNode.value = ""
@@ -642,6 +1797,17 @@ export default class Views {
         that.hide()
         that.container!.remove()
         that.isInNote && Meet.BetterNotes.reFocus()
+	if (Zotero.isMac) {
+            const window = Zotero.getMainWindow();
+            const OS = window.OS;
+            var filename = "ChatPDFLocal"
+            if (!(OS.File.exists(filename))) {
+                const temp = Zotero.getTempDirectory();
+                filename = OS.Path.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
+            } 
+            shutdownLocalLLMEngine()
+	    Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, false)
+	}	
       } else if (event.key == "/" && text == "/" && that.container.querySelector("input")?.style.display != "none") {
         const rect = that.container.querySelector("input")!.getBoundingClientRect()
         const commands = ["clear", "help", "report", "secretKey", "model", "api", "temperature", "chatNumber", "relatedNumber" , "deltaTime", "tagsMore", "width"]
@@ -662,7 +1828,6 @@ export default class Views {
     }
     inputNode.addEventListener("keyup", inputListener)
     textareaNode.addEventListener("keyup", inputListener)
-    // 输出
     const outputContainer = this.outputContainer = ztoolkit.UI.appendElement({
       tag: "div",
       id: "output-container",
@@ -687,7 +1852,7 @@ export default class Views {
             // margin: ".5em 0"
           },
           properties: {
-            // 用于复制
+            // Used to copy 
             pureText: ""
           }
         }
@@ -743,7 +1908,7 @@ export default class Views {
       ]
     }, container) as HTMLDivElement
     this.bindCtrlScrollZoomOutput(outputContainer)
-    // 命令标签
+    // command tag 
     const tagsMore = Zotero.Prefs.get(`${config.addonRef}.tagsMore`) as string
     const tagsContainer = this.tagsContainer = ztoolkit.UI.appendElement({
       tag: "div",
@@ -820,7 +1985,7 @@ export default class Views {
     }, container) as HTMLDivElement
     document.documentElement.append(container)
     this.renderTags()
-    // 聚焦
+    // focus 
     window.setTimeout(() => {
       container.focus()
       inputContainer.focus()
@@ -830,7 +1995,7 @@ export default class Views {
   }
 
   /**
-   * 渲染标签，要根据position排序
+   * Render tags, sorted according to position
    */
   private renderTags() {
     this.tagsContainer!?.querySelectorAll("div").forEach(e=>e.remove())
@@ -841,11 +2006,12 @@ export default class Views {
   }
 
   /**
-   * 添加一个标签
+   * add a tag 
    */
   private addTag(tag: Tag, index: number) {
     let [red, green, blue] = this.utils.getRGB(tag.color)
     let timer: undefined | number;
+    let container = this.tagsContainer!
     ztoolkit.UI.appendElement({
       tag: "div",
       id: `tag-${index}`,
@@ -874,7 +2040,7 @@ export default class Views {
             timer = window.setTimeout(() => {
               timer = undefined
               if (event.buttons == 1) {                
-                // 进入编辑模式
+                // Enter edit mode 
                 const textareaNode = this.inputContainer?.querySelector("textarea")!
                 const inputNode = this.inputContainer?.querySelector("input")!
                 inputNode.style.display = "none";
@@ -897,13 +2063,595 @@ export default class Views {
               window.clearTimeout(timer)
               timer = undefined
               this.outputContainer.querySelector(".auxiliary")?.remove()
-              await this.execTag(tag)
+	      var curLanguage = Zotero.Prefs.get(`${config.addonRef}.usingLanguage`) as string
+	      if (tag.tag.includes("Translate") && curLanguage.length == 0) {
+		  window.alert = function(msg, parentContainer) {
+		       const backgroundContainer = ztoolkit.UI.createElement(document, "div", {
+			      id: "languagesBg",
+                               
+			      styles: {
+                                  display: "block",
+				  flexDirection: "column",
+				  justifyContent: "flex-start",
+				  alignItems: "center",
+				  position: "fixed",
+				  //left: "0px",
+				  //top: "0px",
+				  width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+				  fontSize: "18px",
+				  borderRadius: "10px",
+				  backgroundColor: "#000",
+				  boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+				  0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+				  0px 30px 90px rgba(0, 0, 0, 0.2)`,
+				  fontFamily: fontFamily,
+				  opacity: 0.6,
+				  zIndex:2, 
+                              },
+                      })
+
+		      const allLanguagesContainer = ztoolkit.UI.createElement(document, "div", {
+			      id: "allLanguages",
+                               
+			      styles: {
+                                  display: "block",
+				  flexDirection: "column",
+				  //justifyContent: "flex-start",
+				  justifyContent: "center",
+				  alignItems: "center",
+				  position: "fixed",
+				  width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+				  fontSize: "18px",
+				  borderRadius: "10px",
+				  backgroundColor: "#fff",
+				  boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+				  0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+				  0px 30px 90px rgba(0, 0, 0, 0.2)`,
+				  fontFamily: fontFamily,
+				  //cursor: "pointer",
+				  //spacing: "20px", 
+				  zIndex:3, 
+                                  
+			      },
+                      })
+
+
+                      const languageContainer = ztoolkit.UI.appendElement({
+			      tag: "div", 
+			      id: "languages",
+                               
+			      styles: {
+                                  display: "flex",
+				  //flexDirection: "column",
+				  //justifyContent: "flex-start",
+				  justifyContent: "center",
+				  alignItems: "center",
+				  position: "fixed",
+				  width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+				  fontSize: "18px",
+				  //borderRadius: "10px",
+				  //backgroundColor: "#fff",
+				  //boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+				  //0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+				  //0px 30px 90px rgba(0, 0, 0, 0.2)`,
+				  fontFamily: fontFamily,
+				  color: "red",
+				  cursor: "pointer",
+				  //spacing: "20px", 
+				  zIndex:3, 
+                                  
+			      },
+                              properties: {
+			          innerHTML: msg 
+			      }
+                      }, allLanguagesContainer) as HTMLDivElement
+
+
+
+		      const closeContainer = ztoolkit.UI.appendElement({
+		          tag: "div",
+		          id: "close",
+			  styles: {
+                                  display: "flex",
+				  flexDirection: "column",
+				  //justifyContent: "flex-start",
+				  justifyContent: "center",
+				  alignItems: "center",
+				  position: "fixed",
+				  width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+				  fontSize: "15px",
+				  borderRadius: "10px",
+				  backgroundColor: "#fff",
+				  boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+				  0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+				  0px 30px 90px rgba(0, 0, 0, 0.2)`,
+				  fontFamily: fontFamily,
+				  color: "#1e90ff",
+				  cursor: "pointer",
+				  zIndex:3, 
+			          margin: "20px" 
+			      },
+			  properties: {
+			      value: "",
+			      innerHTML: "X" 
+			  }
+	              }, allLanguagesContainer) as HTMLDivElement
+
+		      closeContainer.addEventListener("click", async event => {
+			      event.stopPropagation();
+			      
+                              backgroundContainer.style.display = "none"
+			      allLanguagesContainer.style.display = "none" 
+
+		      })
+
+
+
+
+                      const languageSelectContainer = ztoolkit.UI.appendElement({
+		          tag: "select",
+		          id: "languagesSelect",
+			  styles: {
+			      margin: "20px" 
+			  }, 
+			  properties: {
+			      value: "" 
+			  }
+	              }, languageContainer) as HTMLSelectElement//HTMLDivElement
+                      
+
+
+		      let languagesJson
+		      try {
+			      languagesJson = Zotero.Prefs.get(`${config.addonRef}.languages`) as string
+		      } catch {}
+
+		      var curLanguage = Zotero.Prefs.get(`${config.addonRef}.usingLanguage`) as string
+		      var languageSelectIdx = 0
+		      this.supportedLanguages = JSON.parse(languagesJson)
+		      if (this.supportedLanguages.length == 0) {
+			      const defaultLanguages = ["Arbic","Chinese", "English", "French", "German", "Hindi", "Italian", "Japanese", "Portuguese", "Russian", "Spanish"]
+			      for (let defaultLanguage of defaultLanguages) {
+				      this.supportedLanguages.push(defaultLanguage) 
+			      }
+		      }
+
+		      var idx = 0	
+		      for (let language of this.supportedLanguages) {
+			      if (curLanguage == language) {
+				      languageSelectIdx = idx + 1
+				      break
+			      }	   
+			      idx = idx + 1 
+		      }	
+
+		      var optionId = "languageOption0"
+		      const optionContainer = ztoolkit.UI.appendElement({
+			      tag: "option",
+			      id: optionId,
+			      properties: {
+				      innerHTML: "",
+				      value: "" 
+			      }
+		      }, languageSelectContainer) as HTMLDivElement
+
+		      for (var i = 0; i < this.supportedLanguages.length; i++) {
+			      if (this.supportedLanguages[i] == curLanguage) {
+				      languageSelectIdx = i + 1 
+			      }	
+			      var optionId = "languageOption" + (i + 1) 
+			      const optionContainer = ztoolkit.UI.appendElement({
+				      tag: "option",
+				      id: optionId,
+				      properties: {
+					      innerHTML: this.supportedLanguages[i],
+					      value: this.supportedLanguages[i]
+				      }
+			      }, languageSelectContainer) as HTMLDivElement
+		      }
+		      languageSelectContainer.selectedIndex = languageSelectIdx 
+
+		      languageSelectContainer.addEventListener("change", async event => {
+			      event.stopPropagation();
+			      curLanguage = languageSelectContainer.value
+			      Zotero.Prefs.set(`${config.addonRef}.usingLanguage`, curLanguage)
+
+			      for (var i = 0; i < this.supportedLanguages.length; i++) {
+				      if (this.supportedLanguages[i] == curLanguage) {
+					      languageSelectContainer.selectedIndex = i + 1
+					      break 
+				      }	  
+			      }
+
+                              backgroundContainer.style.display = "none"
+			      allLanguagesContainer.style.display = "none" 
+
+		      })
+
+ 
+		      
+		  
+
+                      document.documentElement.append(backgroundContainer)
+                      document.documentElement.append(allLanguagesContainer)
+
+		      backgroundContainer.style.display = "flex"
+		      
+                      //const rect = document.documentElement.getBoundingClientRect()
+		      
+		      backgroundContainer.style.height = "30%" 
+		      backgroundContainer.style.width = parentContainer.style.width 
+		      languageContainer.style.display = "flex"
+
+		      backgroundContainer.style.left = parentContainer.style.left 
+		      backgroundContainer.style.top = parentContainer.style.top 
+
+
+		      var x = -1
+		      var y = -1
+		      if (x + y < 0) {
+			      const rect = document.documentElement.getBoundingClientRect()
+			      x = rect.width / 2 - languageContainer.offsetWidth / 2;
+			      y = rect.height / 2 - languageContainer.offsetHeight / 2;
+		      }
+
+		      // ensure container doesn't go off the right side of the screen
+		      if (x + languageContainer.offsetWidth > window.innerWidth) {
+			      x = window.innerWidth - languageContainer.offsetWidth
+		      }
+
+		      // ensure container doesn't go off the bottom of the screen
+		      if (y + languageContainer.offsetHeight > window.innerHeight) {
+			      y = window.innerHeight - languageContainer.offsetHeight
+		      }
+
+		      // ensure container doesn't go off the left side of the screen
+		      if (x < 0) {
+			      x = 0
+		      }
+
+		      // ensure container doesn't go off the top of the screen
+		      if (y < 0) {
+			      y = 0
+		      }
+		      // this.container.style.display = "flex"
+		      languageContainer.style.left = `${x}px`
+		      languageContainer.style.top = `${y}px`
+		  
+		      //returnConfirmContainer.style.left = `${x + allLanguagesContainer.clientWidth/2}px`
+		      //returnConfirmContainer.style.left = `${window.innerWidth - 10}px`
+		      //returnConfirmContainer.style.top = `${y + allLanguagesContainer.clientHeight/2}px`
+		      //returnConfirmContainer.style.width = "80px" 
+		      //returnConfirmContainer.style.height = "40px" 
+
+
+		      allLanguagesContainer.style.left = `${x}px`
+		      allLanguagesContainer.style.top = `${y}px`
+		      allLanguagesContainer.style.height = "80px" 
+
+		      
+		      const percent = Number(Zotero.Prefs.get(`${config.addonRef}.width`))
+		      closeContainer.style.left = `${x}px` 
+		      closeContainer.style.top = `${y + 6}px`//allLanguagesContainer.style.top 
+		      closeContainer.style.width = "3px" 
+		      closeContainer.style.height = "5px" 
+
+		  }
+		  window.alert('Please specify language first:', this.container);
+		  
+	      } else { 
+                  await this.execTag(tag)
+	      }
             }
           }
         }
       ]
     }, this.tagsContainer!) as HTMLDivElement
+
+    if (tag.tag.includes("Translate")) {
+      var curLanguage = Zotero.Prefs.get(`${config.addonRef}.usingLanguage`) as string
+      if (curLanguage.length > 0)  {
+        ztoolkit.UI.appendElement({
+		tag: "div",
+		id: `translateLanguageConfig`,
+		styles: {
+			display: "inline-block",
+			flexShrink: "0",
+			fontSize: "0.5em",
+			height: "1.5em",
+			//color: `rgba(${red}, ${green}, ${blue}, 1)`,
+			backgroundColor: `rgba(${red}, ${green}, ${blue}, 0.15)`,
+			borderRadius: "1em",
+			border: "1px solid #fff",
+			margin: ".15em",
+			padding: "0 .6em",
+			cursor: "pointer",
+			whiteSpace: "nowrap"
+		},
+		properties: {
+			innerHTML: "..." 
+		},
+		listeners: [
+			{
+				type: "click",
+				listener: async () => {
+					var curLanguage = Zotero.Prefs.get(`${config.addonRef}.usingLanguage`) as string
+					window.alert = function(msg, parentContainer) {
+						const backgroundContainer = ztoolkit.UI.createElement(document, "div", {
+							id: "languagesBg",
+
+							styles: {
+								display: "block",
+								flexDirection: "column",
+								justifyContent: "flex-start",
+								alignItems: "center",
+								position: "fixed",
+								//left: "0px",
+								//top: "0px",
+								width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+								fontSize: "18px",
+								borderRadius: "10px",
+								backgroundColor: "#000",
+								boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+								0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+								0px 30px 90px rgba(0, 0, 0, 0.2)`,
+								fontFamily: fontFamily,
+								opacity: 0.6,
+								zIndex:2, 
+							},
+						})
+
+						const allLanguagesContainer = ztoolkit.UI.createElement(document, "div", {
+							id: "allLanguages",
+
+							styles: {
+								display: "block",
+								flexDirection: "column",
+								//justifyContent: "flex-start",
+								justifyContent: "center",
+								alignItems: "center",
+								position: "fixed",
+								width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+								fontSize: "18px",
+								borderRadius: "10px",
+								backgroundColor: "#fff",
+								boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+								0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+								0px 30px 90px rgba(0, 0, 0, 0.2)`,
+								fontFamily: fontFamily,
+								//cursor: "pointer",
+								//spacing: "20px", 
+								zIndex:3, 
+
+							},
+						})
+
+
+						const languageContainer = ztoolkit.UI.appendElement({
+							tag: "div", 
+							id: "languages",
+
+							styles: {
+								display: "flex",
+								//flexDirection: "column",
+								//justifyContent: "flex-start",
+								justifyContent: "center",
+								alignItems: "center",
+								position: "fixed",
+								width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+								fontSize: "18px",
+								//borderRadius: "10px",
+								//backgroundColor: "#fff",
+								//boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+								//0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+								//0px 30px 90px rgba(0, 0, 0, 0.2)`,
+								fontFamily: fontFamily,
+								color: "red",
+								cursor: "pointer",
+								//spacing: "20px", 
+								zIndex:3, 
+
+							},
+							properties: {
+								innerHTML: msg 
+							}
+						}, allLanguagesContainer) as HTMLDivElement
+
+
+
+						const closeContainer = ztoolkit.UI.appendElement({
+							tag: "div",
+							id: "close",
+							styles: {
+								display: "flex",
+								flexDirection: "column",
+								//justifyContent: "flex-start",
+								justifyContent: "center",
+								alignItems: "center",
+								position: "fixed",
+								width: Zotero.Prefs.get(`${config.addonRef}.width`) as string,
+								fontSize: "15px",
+								borderRadius: "10px",
+								backgroundColor: "#fff",
+								boxShadow: `0px 1.8px 7.3px rgba(0, 0, 0, 0.071),
+								0px 6.3px 24.7px rgba(0, 0, 0, 0.112),
+								0px 30px 90px rgba(0, 0, 0, 0.2)`,
+								fontFamily: fontFamily,
+								color: "#1e90ff",
+								cursor: "pointer",
+								zIndex:3, 
+								margin: "20px" 
+							},
+							properties: {
+								value: "",
+								innerHTML: "X" 
+							}
+						}, allLanguagesContainer) as HTMLDivElement
+
+						closeContainer.addEventListener("click", async event => {
+							event.stopPropagation();
+
+							backgroundContainer.style.display = "none"
+							allLanguagesContainer.style.display = "none" 
+
+						})
+
+
+
+						const languageSelectContainer = ztoolkit.UI.appendElement({
+							tag: "select",
+							id: "languagesSelect",
+							styles: {
+								margin: "20px" 
+							}, 
+							properties: {
+								value: "" 
+							}
+						}, languageContainer) as HTMLSelectElement//HTMLDivElement
+
+
+
+						let languagesJson
+						try {
+							languagesJson = Zotero.Prefs.get(`${config.addonRef}.languages`) as string
+						} catch {}
+
+						var curLanguage = Zotero.Prefs.get(`${config.addonRef}.usingLanguage`) as string
+						var languageSelectIdx = 0
+						this.supportedLanguages = JSON.parse(languagesJson)
+						if (this.supportedLanguages.length == 0) {
+							const defaultLanguages = ["Arbic","Chinese", "English", "French", "German", "Hindi", "Italian", "Japanese", "Portuguese", "Russian", "Spanish"]
+							for (let defaultLanguage of defaultLanguages) {
+								this.supportedLanguages.push(defaultLanguage) 
+							}
+						}
+
+						var idx = 0	
+						for (let language of this.supportedLanguages) {
+							if (curLanguage == language) {
+								languageSelectIdx = idx + 1
+								break
+							}	   
+							idx = idx + 1 
+						}	
+
+						var optionId = "languageOption0"
+						const optionContainer = ztoolkit.UI.appendElement({
+							tag: "option",
+							id: optionId,
+							properties: {
+								innerHTML: "",
+								value: "" 
+							}
+						}, languageSelectContainer) as HTMLDivElement
+
+						for (var i = 0; i < this.supportedLanguages.length; i++) {
+							if (this.supportedLanguages[i] == curLanguage) {
+								languageSelectIdx = i + 1 
+							}	
+							var optionId = "languageOption" + (i + 1) 
+							const optionContainer = ztoolkit.UI.appendElement({
+								tag: "option",
+								id: optionId,
+								properties: {
+									innerHTML: this.supportedLanguages[i],
+									value: this.supportedLanguages[i]
+								}
+							}, languageSelectContainer) as HTMLDivElement
+						}
+						languageSelectContainer.selectedIndex = languageSelectIdx 
+
+						languageSelectContainer.addEventListener("change", async event => {
+							event.stopPropagation();
+							curLanguage = languageSelectContainer.value
+							Zotero.Prefs.set(`${config.addonRef}.usingLanguage`, curLanguage)
+
+							for (var i = 0; i < this.supportedLanguages.length; i++) {
+								if (this.supportedLanguages[i] == curLanguage) {
+									languageSelectContainer.selectedIndex = i + 1
+									break 
+								}	  
+							}
+
+							backgroundContainer.style.display = "none"
+							allLanguagesContainer.style.display = "none" 
+
+						})
+
+
+						document.documentElement.append(backgroundContainer)
+						document.documentElement.append(allLanguagesContainer)
+
+						backgroundContainer.style.display = "flex"
+
+						backgroundContainer.style.height = "30%" 
+						backgroundContainer.style.width = parentContainer.style.width 
+						languageContainer.style.display = "flex"
+
+						backgroundContainer.style.left = parentContainer.style.left 
+						backgroundContainer.style.top = parentContainer.style.top 
+
+
+						var x = -1
+						var y = -1
+						if (x + y < 0) {
+							const rect = document.documentElement.getBoundingClientRect()
+							x = rect.width / 2 - languageContainer.offsetWidth / 2;
+							y = rect.height / 2 - languageContainer.offsetHeight / 2;
+						}
+
+						// ensure container doesn't go off the right side of the screen
+						if (x + languageContainer.offsetWidth > window.innerWidth) {
+							x = window.innerWidth - languageContainer.offsetWidth
+						}
+
+						// ensure container doesn't go off the bottom of the screen
+						if (y + languageContainer.offsetHeight > window.innerHeight) {
+							y = window.innerHeight - languageContainer.offsetHeight
+						}
+
+						// ensure container doesn't go off the left side of the screen
+						if (x < 0) {
+							x = 0
+						}
+
+						// ensure container doesn't go off the top of the screen
+						if (y < 0) {
+							y = 0
+						}
+						// this.container.style.display = "flex"
+						languageContainer.style.left = `${x}px`
+						languageContainer.style.top = `${y}px`
+
+						//returnConfirmContainer.style.left = `${x + allLanguagesContainer.clientWidth/2}px`
+						//returnConfirmContainer.style.left = `${window.innerWidth - 10}px`
+						//returnConfirmContainer.style.top = `${y + allLanguagesContainer.clientHeight/2}px`
+						//returnConfirmContainer.style.width = "80px" 
+						//returnConfirmContainer.style.height = "40px" 
+
+
+						allLanguagesContainer.style.left = `${x}px`
+						allLanguagesContainer.style.top = `${y}px`
+						allLanguagesContainer.style.height = "80px" 
+
+						const percent = Number(Zotero.Prefs.get(`${config.addonRef}.width`))
+						closeContainer.style.left = `${x}px` 
+						closeContainer.style.top = `${y + 6}px`//allLanguagesContainer.style.top 
+						closeContainer.style.width = "3px" 
+						closeContainer.style.height = "5px" 
+
+					}
+
+					window.alert('Change translate language:', this.container);
+				}
+			   }
+		]
+	}, this.tagsContainer!) as HTMLDivElement
+      }
+    }
+
   }
+
 
   private rippleEffect(div: HTMLDivElement, color: string) {
     let [red, green, blue] = this.utils.getRGB(color)
@@ -916,7 +2664,7 @@ export default class Views {
     }, div)
   }
   /**
-   * 执行标签
+   * execute tag 
    */
   private async execTag(tag: Tag) {
     Meet.Global.input = this.inputContainer.querySelector("input")?.value as string
@@ -938,14 +2686,13 @@ export default class Views {
     outputDiv.innerHTML = ""
     outputDiv.setAttribute("pureText", "");
     let text = tag.text.replace(/^#.+\n/, "")
-    // 旧版语法不宜传播，MD语法会被转义
+    // new match version
     for (let rawString of text.match(/```j(?:ava)?s(?:cript)?\n([\s\S]+?)\n```/g)! || []) {
       let codeString = rawString.match(/```j(?:ava)?s(?:cript)?\n([\s\S]+?)\n```/)![1]
       try {
         text = text.replace(rawString, await window.eval(`${codeString}`))
       } catch { }
     }
-    // 新版语法容易分享传播
     for (let rawString of text.match(/\$\{[\s\S]+?\}/g)! || []) {
       let codeString = rawString.match(/\$\{([\s\S]+?)\}/)![1]
       try {
@@ -954,8 +2701,7 @@ export default class Views {
     }
     popunWin.createLine({ text: `Characters ${text.length}`, type: "success" })
     popunWin.createLine({ text: "Answering...", type: "default" })
-    // 运行替换其中js代码
-    text = await Meet.OpenAI.getGPTResponse(text) as string
+    text = await Meet.integratellms.getGPTResponse(text) as string
     this.dotsContainer?.classList.remove("loading")
     if (text.trim().length) {
       try {
@@ -974,12 +2720,12 @@ export default class Views {
   }
 
   /**
-   * 执行输入框文本
+   * Execute input box text
    * @param text 
    * @returns 
    */
   private async execText(text: string) {
-    // 如果文本中存在某一标签预设的关键词|正则表达式，则转为执行该标签
+    // If there is a preset keyword | regular expression for a certain tag in the text, it will be converted to execute the tag
     const tag = this.getTags()
       .filter((tag: Tag) => tag.trigger?.length > 0)
       .find((tag: Tag) => {
@@ -992,23 +2738,21 @@ export default class Views {
     })
     if (tag) { return this.execTag(tag) }
 
-    // 没有匹配执行文本
     this.outputContainer.style.display = "none"
     const outputDiv = this.outputContainer.querySelector("div")!
     outputDiv.innerHTML = ""
     outputDiv.setAttribute("pureText", "");
     if (text.trim().length == 0) { return }
     this.dotsContainer?.classList.add("loading")
-    await Meet.OpenAI.getGPTResponse(text)
+    await Meet.integratellms.getGPTResponse(text)
     this.dotsContainer?.classList.remove("loading")
   }
 
   /**
-   * 从Zotero.Prefs获取所有已保存标签
-   * 按照position顺序排序后返回
+   * Get all saved tags from Zotero.Prefs
+   * Return after sorting according to position order
    */
   private getTags() {
-    // 进行一个简单的处理，应该是中文/表情写入prefs.js导致的bug
     let tagsJson
     try {
       tagsJson = Zotero.Prefs.get(`${config.addonRef}.tags`) as string
@@ -1030,11 +2774,6 @@ export default class Views {
     Zotero.Prefs.set(`${config.addonRef}.tags`, JSON.stringify(tags))
   }
 
-  /**
-   * 下面代码是GPT写的
-   * @param x 
-   * @param y 
-   */
   public show(x: number = -1, y: number = -1, reBuild: boolean = true) {
     reBuild = reBuild || !this.container
     if (reBuild) {
@@ -1075,7 +2814,7 @@ export default class Views {
   }
 
   /**
-   * 关闭界面清除所有setInterval
+   * Shutdown the ui and clear all the setIntervall
    */
   public hide() {
     this.container.style.display = "none"
@@ -1088,9 +2827,9 @@ export default class Views {
   }
 
   /**
-   * 在输出界面插入辅助按钮
-   * 这是一个极具扩展性的函数
-   * 帮助定位，比如定位条目，PDF段落，PDF注释
+   * Enter auxiliary buttons on the output interface
+   * This is a very extensible function
+   * Help with positioning, such as locating entries, PDF comments, PDF paragraphs 
    */
   public insertAuxiliary(docs: Document[]) {
     this.outputContainer.querySelector(".auxiliary")?.remove()
@@ -1147,9 +2886,6 @@ export default class Views {
     })
   }
 
-  /**
-   * 创建选项
-   */
   public createMenuNode(
     rect: { x: number, y: number, width: number, height: number },
     items: { name: string, listener: Function }[],
@@ -1252,7 +2988,6 @@ export default class Views {
     
     const winRect = document.documentElement.getBoundingClientRect()
     const nodeRect = menuNode.getBoundingClientRect()
-    // 避免溢出
     if (nodeRect.bottom > winRect.bottom) {
       menuNode.style.top = ""
       menuNode.style.bottom = "0px"
@@ -1280,6 +3015,17 @@ export default class Views {
         removeNode()
       } else if (event.code == "Escape") {
         removeNode()
+	if (Zotero.isMac) {
+            const window = Zotero.getMainWindow();
+            const OS = window.OS;
+            var filename = "ChatPDFLocal"
+            if (!(OS.File.exists(filename))) {
+                const temp = Zotero.getTempDirectory();
+                filename = OS.Path.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
+            } 
+            shutdownLocalLLMEngine()
+	    Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, false)
+	}	
       }
       nodes.forEach(e => e.classList.remove("selected"))
       nodes[currentIndex].classList.add("selected")
@@ -1288,12 +3034,62 @@ export default class Views {
     return menuNode
   }
 
+  public async updatePublisherModels(email: string, token: string) {
+    await getSupportedLLMs(this.publisher2models, this.publishers, email, token) 
+  }
+
   /**
-   * 绑定快捷键
+   * Bind shortcut key 
    */
   private registerKey() {
     const callback = async () => {
+      this.publisher2models.clear()
+      this.publishers = []
+
       this.isInNote = false
+      const defaultModelApiKey = Zotero.Prefs.get(`${config.addonRef}.openaiApiKey`)
+      let modelConfig: ModelConfig = {
+	  models: ["gpt-3.5-turbo", "gpt-4"],
+	  hasApiKey: true,
+	  apiKey: defaultModelApiKey,
+	  areModelsReady: new Map(),
+	  defaultModelIdx: 0,
+	  apiUrl: "https://api.openai.com/v1/chat/completions"
+      }
+
+      this.publisher2models.set("OpenAI", modelConfig)
+      this.publishers.push("OpenAI")
+      Zotero.Prefs.set(`${config.addonRef}.usingPublisher`, "OpenAI")
+      Zotero.Prefs.set(`${config.addonRef}.usingModel`, "gpt-3.5-turbo")
+      Zotero.Prefs.set(`${config.addonRef}.usingAPIURL`, "https://api.openai.com/v1/chat/completions")
+      Zotero.Prefs.set(`${config.addonRef}.usingAPIKEY`, defaultModelApiKey)
+
+      var email = Zotero.Prefs.get(`${config.addonRef}.email`) 
+      var token =  Zotero.Prefs.get(`${config.addonRef}.token`) 
+      if (Zotero.isMac) {
+          const OS = window.OS;
+          var filename = "ChatPDFLocal"
+          if (!(await OS.File.exists(filename))) {
+              const temp = Zotero.getTempDirectory();
+              filename = OS.Path.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
+          } 
+	 
+	  if (await checkFileExist(filename + ".done")) {
+	      var startLocalServer = Zotero.Prefs.get(`${config.addonRef}.startLocalServer`)
+              if (!startLocalServer) {
+		  await startLocalLLMEngine(filename)  
+	   
+		  Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, true)
+	          const execFunc = async() => {
+		      var email = Zotero.Prefs.get(`${config.addonRef}.email`) 
+                      var token =  Zotero.Prefs.get(`${config.addonRef}.token`) 
+                      await Zotero[config.addonInstance].views.updatePublisherModels(email, token)
+                      Zotero[config.addonInstance].views.createOrUpdateModelsContainer()
+                  }
+                  window.setTimeout(execFunc, 3000)
+	      }
+	  } 
+      }  
       if (Zotero_Tabs.selectedIndex == 0) {
         const div = document.querySelector("#item-tree-main-default .row.selected")!
         if (div) {
@@ -1304,7 +3100,6 @@ export default class Views {
         }
       } else {
         const reader = await ztoolkit.Reader.getReader()
-        // const div = reader?._iframeWindow?.document.querySelector("#selection-menu")!
         const div = reader?._iframeWindow?.document.querySelector(".selection-popup")!
         if (div) {
           window.setTimeout(() => {
@@ -1333,17 +3128,18 @@ export default class Views {
       }
     }
     if (Zotero.isMac) {
+
       ztoolkit.Shortcut.register("event", {
         id: config.addonRef,
         modifiers: "meta",
-        key: "/",
+        key: "enter",
         callback: callback
       })
     } else {
       ztoolkit.Shortcut.register("event", {
         id: config.addonRef,
         modifiers: "control",
-        key: "/",
+        key: "enter",
         callback: callback
       })
     }
@@ -1351,7 +3147,6 @@ export default class Views {
     document.addEventListener(
       "keydown",
       async (event: any) => {
-        // 笔记内按空格
         if (
           Zotero_Tabs.selectedIndex == 1 &&
           event.explicitOriginalTarget.baseURI.indexOf("note-editor") >= 0 &&

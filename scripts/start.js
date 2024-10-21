@@ -21,5 +21,6 @@ const startZotero = `${zoteroPath} --debugger --purgecaches ${
   profile ? `-p ${profile}` : ""
 }`;
 
+console.log("hello hello hello....")
 execSync(startZotero);
 exit(0);

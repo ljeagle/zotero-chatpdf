@@ -41,7 +41,7 @@ You can type the question in my header, then press \`Enter\` to ask me.
 You can press \`Ctrl + Enter\` to execute last executed command tag again.
 You can press \`Shift + Enter\` to enter long text editing mode and press \`Ctrl + R\` to execute long text.
 `
-// 这是 OpenAI ChatGPT 的字体
+// This is OpenAI ChatGPT font style 
 const fontFamily = `Söhne,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif,Helvetica Neue,Arial,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji`
 
 function parseTag(text: string) {
@@ -65,13 +65,13 @@ function parseTag(text: string) {
   if (tagString) {
     tagString = tagString[0]
     tag.tag = tagString.match(/^#([^\[\n]+)/)[1]
-    // 解析颜色
+    // parse color 
     let color = tagString.match(/\[c(?:olor)?="?(#.+?)"?\]/)
     tag.color = color?.[1] || tag.color
-    // 解析位置
+    // parse position
     let position = tagString.match(/\[pos(?:ition)?="?(\d+?)"?\]/)
     tag.position = Number(position?.[1] || tag.position)
-    // 解析关键词
+    // parse trigger keyword
     let trigger = tagString.match(/\[tr(?:igger)?="?(.+)"?\]/)
     tag.trigger = trigger?.[1] || tag.trigger
     tag.text = `#${tag.tag}[position=${tag.position}][color=${tag.color}][trigger=${tag.trigger}]` + "\n" + text.replace(/^#.+\n/, "")
@@ -80,11 +80,11 @@ function parseTag(text: string) {
 }
 
 /**
- * 这里默认标签无法删除，但可以更改里面的内容，比如颜色位置，内部prompt
+ * The default label here cannot be deleted, but the content inside can be changed, such as color position and internal prompt
  */
 let defaultTags: any = [
 `
-#🪐AskPDF[color=#0EA293][position=10][trigger=/^(本文|这篇文章|论文)/]
+#ChatPDF[color=#0EA293][position=10][trigger=/^(本文|这篇文章|论文)/]
 You are a helpful assistant. Context information is below.
 $\{
 Meet.Global.views.messages = [];
@@ -97,8 +97,8 @@ Answer the question: $\{Meet.Global.input\}
 Reply in ${Zotero.locale}
 `,
 `
-#🌟Translate[c=#D14D72][pos=11][trigger=/^翻译/]
-Translate these content to 简体中文:
+#Translate[c=#D14D72][pos=11][trigger=/^翻译/]
+Translate these content to $\{Meet.Zotero.getTranslatingLanguage\}:
 $\{
 Meet.Global.input.replace("翻译", "") ||
 Meet.Zotero.getPDFSelection() ||
@@ -107,7 +107,7 @@ Meet.Global.views.messages[0].content
 
 `,
 `
-#✨Improve writing[color=#8e44ad][pos=12][trigger=/^润色/]
+#Improve writing[color=#8e44ad][pos=12][trigger=/^润色/]
 Below is a paragraph from an academic paper. Polish the writing to meet the academic style, improve the spelling, grammar, clarity, concision and overall readability. When necessary, rewrite the whole sentence. Furthermore, list all modification and explain the reasons to do so in markdown table. Paragraph: "$\{
 Meet.Global.input.replace("润色", "") ||
 Meet.Global.views.messages[0].content
