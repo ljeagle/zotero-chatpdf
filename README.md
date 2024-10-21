@@ -17,16 +17,12 @@ Seamless Zotero Integration: Syncs directly with your Zotero library, making it 
   
 
 # How to Use
-Installation: Download [here](), Open Zotero. In the top menu bar, click on `Tools > Add-ons`.  
-              
-              Click on the gear icon at the top right of the window. Click on `Install Add-on From File` and open the downloaded plugin file zotero-chatpdf.xpi.
+Installation: First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/zotero-chatpdf-v0.0.1/zotero-chatpdf.xpi). Open Zotero in the top menu bar, click on `Tools > Add-ons`.  Click on the gear icon at the top right of the window. Click on `Install Add-on From File` and open the downloaded plugin file zotero-chatpdf.xpi.
 
 Startup: In Zotero, press the keys to start the plugin, MacOS(command + enter), Windows(ctrl + enter). 
 
-Select LLM models: For Windows users, after registering the OpenAI, Claude, and Gemini models can all be accessed and switched by one click.  
-
-                   For Mac users, after registering llama3.1, gemma2, phi-3.5 and mistral can all be used by just one click in plugin without extra need to install many additional tools or softwares.  
-                   Now the registration is open and free!
+Select LLM models: For Windows users, after registering the OpenAI, Claude, and Gemini models can all be accessed and switched by one click.  For Mac users, after registering llama3.1, gemma2, phi-3.5 and mistral can all be used by just one click in plugin without extra need to install many additional tools or softwares.  
+Now the registration is open and free!
  
 Chat with PDFs: Open any PDF and start asking questions. Zotero-ChatPDF will process the document and provide insightful responses.
 
