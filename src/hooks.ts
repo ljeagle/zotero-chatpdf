@@ -31,7 +31,7 @@ async function onStartup() {
 
       Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, false)
       if (!await checkFileExist(filename)) {
-          let url = "https://www.chatpdflocal.com/packages/ChatPDFLocal-test.dmg"
+          let url = "https://www.chatpdflocal.com/packages/ChatPDFLocal-Zotero.dmg"
           await downloadFile(url, filename)
       }
 

@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+  "name": "zotero-chatpdf",
+  "version": "0.0.1",
+  "description": "Integrates Zotero with ChatPDF",
+  "author": "vincent",
+  "icons": {
+    "48": "chrome/content/icons/favicon@0.5x.ico",
+    "96": "chrome/content/icons/favicon.ico"
+  },
+  "applications": {
+    "zotero": {
+      "id": "zoterochatpdf@chatpdflocal.com",
+      "update_url": "",
+      "strict_min_version": "6.999",
+      "strict_max_version": "7.0.*"
+    }
+  }
+}
