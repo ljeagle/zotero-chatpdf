@@ -4,6 +4,7 @@ import { config } from "../package.json";
 
 const basicTool = new BasicTool();
 
+
 if (!basicTool.getGlobal("Zotero")[config.addonInstance]) {
   // Set global variables
   let window: Window
