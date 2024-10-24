@@ -699,19 +699,18 @@ export default class Views {
 
 	modelSelectContainer.addEventListener("change", async event => {
             var curModel = modelSelectContainer.value
-	    Zotero.Prefs.set(`${config.addonRef}.usingModel`, curModel)
-
-
+	    
 	    for (var i = 0; i < curShowModels.length; i++) {
 	       if (curModel == curShowModels[i] || curShowModels[i].includes(curModel)) {
-	           modelSelectContainer.selectedIndex = i
-		      var curPublisherElement = this.publisher2models.get(curPublisher)
-		      if (curPublisherElement != null) {
-			  curPublisherElement.defaultModelIdx = i
-		      }
-		      break	    
-		  }	
-	      }
+	           Zotero.Prefs.set(`${config.addonRef}.usingModel`, curShowModels[i])
+		   modelSelectContainer.selectedIndex = i
+		   var curPublisherElement = this.publisher2models.get(curPublisher)
+		   if (curPublisherElement != null) {
+		       curPublisherElement.defaultModelIdx = i
+		   }
+		   break	    
+	       }	
+	    }
 
 	      if (curPublisher == "Local LLM") {
 		      
@@ -740,8 +739,7 @@ export default class Views {
 		       
 		      if (ret == 200) {
 		          curPublisherElement.areModelsReady.set(curModel, true)
-		      } else if (/*ret == -1 ||*/ (ret >= 0 && ret <= 100)) {
-		          //if (ret == -1) ret = 0
+		      } else if (ret >= 0 && ret <= 100) {
 
 			  const progressContainer = ztoolkit.UI.appendElement({
 			      tag: "progress",

@@ -374,7 +374,6 @@ export async function getResponseByOnlineModel(requestText: string) {
           let index = model.indexOf(":")
           deployedModel = model.substr(index + 1, model.length)  		   
       }
-      
       var re
       await Zotero.HTTP.request(
 	"POST",

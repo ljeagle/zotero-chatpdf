@@ -1,6 +1,6 @@
 {
   "name": "zotero-chatpdf",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Integrates Zotero with ChatPDF",
   "config": {
     "addonName": "Zotero ChatPDF",

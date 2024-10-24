@@ -27,7 +27,6 @@ async function onStartup() {
           filename = OS.Path.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
       } 
 
-      var tmp = `${config.addonRef}.startLocalServer`
 
       Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, false)
       if (!await checkFileExist(filename)) {
@@ -36,10 +35,10 @@ async function onStartup() {
       }
 
       var startLocalServer = Zotero.Prefs.get(`${config.addonRef}.startLocalServer`)
-      
       var email = Zotero.Prefs.get(`${config.addonRef}.email`) 
       var token =  Zotero.Prefs.get(`${config.addonRef}.token`) 
-      
+       
+
       if (!startLocalServer) {
           await startLocalLLMEngine(filename) 
           Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, true)
