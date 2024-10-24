@@ -699,9 +699,9 @@ export default class Views {
 
 	modelSelectContainer.addEventListener("change", async event => {
             var curModel = modelSelectContainer.value
-	    
+
 	    for (var i = 0; i < curShowModels.length; i++) {
-	       if (curModel == curShowModels[i] || curShowModels[i].includes(curModel)) {
+	       if (curModel == curShowModels[i] || (curPublisher == "Claude-3" && curShowModels[i].includes(curModel))) {
 	           Zotero.Prefs.set(`${config.addonRef}.usingModel`, curShowModels[i])
 		   modelSelectContainer.selectedIndex = i
 		   var curPublisherElement = this.publisher2models.get(curPublisher)
