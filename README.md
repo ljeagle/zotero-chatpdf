@@ -7,7 +7,7 @@ Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabl
 Effortless PDF Interaction: Chat with your PDFs directly in Zotero, asking questions and receiving detailed answers in natural language.  
  
 SOTA Language Models: Powered by cutting-edge LLMs, such as gpt-4o, claude-3.5-sonnet and gemini-1.5-pro, offering highly accurate and contextually relevant responses.   
-For Mac users, there are some excellent free and open-source models built in, such as llama3.1, gemma2, phi-3.5, etc. Now after free registration, they can be automatically downloaded, installed and used with just one click on the plugin page, and the model data is all locally stored, ensuring absolute privacy and security of the data 
+For Mac users, there are some excellent free and open-source models built in, such as llama3.2, gemma2, phi-3.5, etc. Now after free registration, they can be automatically downloaded, installed and used with just one click on the plugin page, and the model data is all locally stored, ensuring absolute privacy and security of the data 
 
 Annotations and Highlights: Extract annotations and highlights from your PDFs and use them for deeper analysis and conversation.
 
@@ -21,7 +21,7 @@ Installation: First download zotero-chatpdf.xpi plugin [here](https://github.com
 
 Startup: In Zotero, press the keys to start the plugin, MacOS(command + enter), Windows(ctrl + enter). 
 
-Select LLM models: For Windows users, after registering the OpenAI, Claude, and Gemini models can all be accessed and switched by one click.  For Mac users, after registering llama3.1, gemma2, phi-3.5 and mistral can all be used by just one click in plugin without extra need to install many additional tools or softwares.  
+Select LLM models: For Windows users, after registering the OpenAI, Claude, and Gemini models can all be accessed and switched by one click.  For Mac users, after registering llama3.2, gemma2, phi-3.5 and mistral can all be used by just one click in plugin without extra need to install many additional tools or softwares.  
 Now the registration is open and free!
  
 Chat with PDFs: Open any PDF and start asking questions. Zotero-ChatPDF will process the document and provide insightful responses.
