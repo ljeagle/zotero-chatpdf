@@ -17,7 +17,7 @@ Seamless Zotero Integration: Syncs directly with your Zotero library, making it 
   
 
 # How to Use
-Installation: First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/zotero-chatpdf-v0.0.1/zotero-chatpdf.xpi). Open Zotero in the top menu bar, click on `Tools > Add-ons`.  Click on the gear icon at the top right of the window. Click on `Install Add-on From File` and open the downloaded plugin file zotero-chatpdf.xpi.
+Installation: First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/zotero-chatpdf-v0.0.4/zotero7-chatpdf.xpi). Open Zotero in the top menu bar, click on `Tools > Add-ons`.  Click on the gear icon at the top right of the window. Click on `Install Add-on From File` and open the downloaded plugin file zotero-chatpdf.xpi.
 
 Startup: In Zotero, press the keys to start the plugin, MacOS(command + enter), Windows(ctrl + enter). 
 
