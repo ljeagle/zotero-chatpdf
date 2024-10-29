@@ -19,14 +19,9 @@ async function onStartup() {
   Zotero[config.addonInstance].utils = new Utils();
   
   if (Zotero.isMac) {
-      // @ts-ignore
-      const OS = window.OS;
       var filename = "ChatPDFLocal"
-      if (!(await OS.File.exists(filename))) {
-          const temp = Zotero.getTempDirectory();
-          filename = OS.Path.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
-      } 
-
+      const temp = Zotero.getTempDirectory();
+      filename = PathUtils.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
 
       Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, false)
       if (!await checkFileExist(filename)) {
@@ -63,12 +58,12 @@ export async function downloadFile(url, filename) {
     try {
         await Zotero.Utilities.Internal.exec(exec, execCmd);
     } catch {
+	Zotero.log("touch error")
     } 
 }
 
 export async function checkFileExist(filename) {
-    const OS = window.OS 
-    return await OS.File.exists(filename)
+    return await IOUtils.exists(filename)
 }
 
 export async function startLocalLLMEngine(filename) {
@@ -132,11 +127,10 @@ function onShutdown(): void {
       shutdownLocalLLMEngine()
 
       // @ts-ignore
-      const OS = window.OS;
       const temp = Zotero.getTempDirectory();
       var filename = "ChatPDFLocal"
-      filename = OS.Path.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
 
+      filename = PathUtils.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
 
       var execCmd = [filename];
       var exec = "/bin/rm"

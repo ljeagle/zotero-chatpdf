@@ -1796,12 +1796,10 @@ export default class Views {
         that.container!.remove()
         that.isInNote && Meet.BetterNotes.reFocus()
 	if (Zotero.isMac) {
-            const window = Zotero.getMainWindow();
-            const OS = window.OS;
             var filename = "ChatPDFLocal"
-            if (!(OS.File.exists(filename))) {
+            if (!(IOUtils.exists(filename))) {
                 const temp = Zotero.getTempDirectory();
-                filename = OS.Path.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
+                filename = PathUtils.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
             } 
             shutdownLocalLLMEngine()
 	    Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, false)
@@ -3014,12 +3012,10 @@ export default class Views {
       } else if (event.code == "Escape") {
         removeNode()
 	if (Zotero.isMac) {
-            const window = Zotero.getMainWindow();
-            const OS = window.OS;
             var filename = "ChatPDFLocal"
-            if (!(OS.File.exists(filename))) {
+            if (!(IOUtils.exists(filename))) {
                 const temp = Zotero.getTempDirectory();
-                filename = OS.Path.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
+                filename = PathUtils.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
             } 
             shutdownLocalLLMEngine()
 	    Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, false)
@@ -3065,12 +3061,9 @@ export default class Views {
       var email = Zotero.Prefs.get(`${config.addonRef}.email`) 
       var token =  Zotero.Prefs.get(`${config.addonRef}.token`) 
       if (Zotero.isMac) {
-          const OS = window.OS;
           var filename = "ChatPDFLocal"
-          if (!(await OS.File.exists(filename))) {
-              const temp = Zotero.getTempDirectory();
-              filename = OS.Path.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
-          } 
+	  const temp = Zotero.getTempDirectory();
+          filename = PathUtils.join(temp.path.replace(temp.leafName, ""), `${filename}.dmg`);
 	 
 	  if (await checkFileExist(filename + ".done")) {
 	      var startLocalServer = Zotero.Prefs.get(`${config.addonRef}.startLocalServer`)

@@ -193,78 +193,19 @@ async function pdf2documents(itemkey: string) {
       break
     }
   }
+
   popupWin.changeLine({ idx: popupWin.lines.length - 1, text: "Reading PDF", progress: 100 })
   popupWin.changeLine({ progress: 100 });
   totalPageNum = Object.keys(pageLines).length
-  for (let pageNum = 0; pageNum < totalPageNum; pageNum++) {
-    let pdfPage = pages[pageNum].pdfPage
+  
+  for (let pageNum1 = 0; pageNum1 < totalPageNum; pageNum1++) {
+    let pdfPage = pages[pageNum1].pdfPage
     const maxWidth = pdfPage._pageInfo.view[2];
     const maxHeight = pdfPage._pageInfo.view[3];
-    let lines = [...pageLines[pageNum]]
-    // Remove header and footer information
-    let removeLines = new Set()
-    let removeNumber = (text: string) => {
-      // page number
-      if (/^[A-Z]{1,3}$/.test(text)) {
-        text = ""
-      }
-      // Normal page numbers 1, 2, 3
-      text = text.replace(/\x20+/g, "").replace(/\d+/g, "")
-      return text
-    }
-    // whether duplicated
-    let isRepeat = (line: PDFLine, _line: PDFLine) => {
-      let text = removeNumber(line.text)
-      let _text = removeNumber(_line.text)
-      return text == _text && isIntersectLines(line, _line, maxWidth, maxHeight)
-    }
-    // Invalid rows exist at the beginning and end of the data
-    for (let i of Object.keys(pageLines)) {
-      if (Number(i) == pageNum) { continue }
-      // Compare two different pages
-      let _lines = pageLines[i]
-      let directions = {
-        forward: {
-          factor: 1,
-          done: false
-        },
-        backward: {
-          factor: -1,
-          done: false
-        }
-      }
-      for (let offset = 0; offset < lines.length && offset < _lines.length; offset++) {
-        ["forward", "backward"].forEach((direction: string) => {
-          if (directions[direction as keyof typeof directions].done) { return }
-          let factor = directions[direction as keyof typeof directions].factor
-          let index = factor * offset + (factor > 0 ? 0 : -1)
-          let line = lines.slice(index)[0]
-          let _line = _lines.slice(index)[0]
-          if (isRepeat(line, _line)) {
-            // considered to be the same
-            line[direction] = true
-            removeLines.add(line)
-          } else {
-            directions[direction as keyof typeof directions].done = true
-          }
-        })
-      }
-      // Set a 100% text area to prevent accidental wrong 
-      const content = { x: 0.2 * maxWidth, width: .6 * maxWidth, y: .2 * maxHeight, height: .6 * maxHeight }
-      for (let j = 0; j < lines.length; j++) {
-        let line = lines[j]
-        if (isIntersectLines(content, line, maxWidth, maxHeight)) { continue }
-        for (let k = 0; k < _lines.length; k++) {
-          let _line = _lines[k]
-          if (isRepeat(line, _line)) {
-            line.repeat = line.repeat == undefined ? 1 : (line.repeat + 1)
-            line.repateWith = _line
-            removeLines.add(line)
-          }
-        }
-      }
-    }
-    lines = lines.filter((e: any) => !(e.forward || e.backward || (e.repeat && e.repeat > 3)));
+    let lines = [...pageLines[pageNum1]]
+    // Todo: Remove header and footer information, duplicate 
+  
+
     // paragraph clustering
     // principle: Font size from large to small, merge; From small to big
     let abs = (x: number) => x > 0 ? x : -x
@@ -310,7 +251,7 @@ async function pdf2documents(itemkey: string) {
         if (!line) { continue }
         nextLine = paragraphs[i]?.[j + 1]
         // Update boundaries 
-        box ??= { page: pageNum, left: line.x, right: line.x + line.width, top: line.y + line.height, bottom: line.y }
+        box ??= { page: pageNum1, left: line.x, right: line.x + line.width, top: line.y + line.height, bottom: line.y }
         if (line.x < box.left) {
           box.left = line.x
         }
@@ -348,7 +289,6 @@ async function pdf2documents(itemkey: string) {
   }
   // popupWin.changeHeadline("[Done] PDF")
   // popupWin.startCloseTimer(1000)
-  console.log("pdf2documents", docs)
   return docs
 }
 
@@ -359,7 +299,6 @@ async function pdf2documents(itemkey: string) {
  * @returns 
  */
 export async function getRelatedText(queryText: string) {
-  
   const usingPublisher = Zotero.Prefs.get(`${config.addonRef}.usingPublisher`)
   if (usingPublisher != "Local LLM") {
     // @ts-ignore

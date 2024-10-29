@@ -1,21 +1,17 @@
 {
   "manifest_version": 2,
-  "name": "__addonName__",
-  "version": "__buildVersion__",
-  "description": "__description__",
-  "author": "__author__",
+  "name": "zotero-chatpdf",
+  "version": "0.0.3",
+  "description": "Integrates Zotero with ChatPDF",
+  "author": "vincent",
   "icons": {
     "48": "chrome/content/icons/favicon@0.5x.ico",
     "96": "chrome/content/icons/favicon.ico"
   },
-  "permissions": [
-    "downloads",
-    "downloads.open" 
-  ],
   "applications": {
     "zotero": {
-      "id": "__addonID__",
-      "update_url": "__updaterdf__",
+      "id": "zoterochatpdf@chatpdflocal.com",
+      "update_url": "https://github.com/ljeagle/zotero-chatpdf/updates.json",
       "strict_min_version": "6.999",
       "strict_max_version": "7.0.*"
     }
