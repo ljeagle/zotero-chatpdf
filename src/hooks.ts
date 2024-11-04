@@ -15,9 +15,9 @@ async function onStartup() {
     `chrome://${config.addonRef}/content/icons/favicon.ico`
   );
 
+  Zotero.Prefs.set(`${config.addonRef}.supportedLLMs`, "")
   Zotero[config.addonInstance].views = new Views();
   Zotero[config.addonInstance].utils = new Utils();
-  
   if (Zotero.isMac) {
       var filename = "ChatPDFLocal"
       const temp = Zotero.getTempDirectory();

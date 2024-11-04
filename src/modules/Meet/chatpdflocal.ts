@@ -370,6 +370,8 @@ function parseJsonResults(publisher2models: Map<string, ModelConfig>, publishers
 	    apiKey = Zotero.Prefs.get(`${config.addonRef}.claudeApiKey`)
 	} else if (publisher == "Gemini") {
 	    apiKey = Zotero.Prefs.get(`${config.addonRef}.geminiApiKey`)
+	} else if (publisher == "Customized") {
+	    apiKey = Zotero.Prefs.get(`${config.addonRef}.customModelApiKey`)
 	}	
     }
 
