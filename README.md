@@ -7,7 +7,7 @@ Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabl
 - Effortless PDF Interaction: Chat with your PDFs directly in Zotero, asking questions and receiving detailed answers in natural language.  
  
 - SOTA Language Models: Powered by cutting-edge LLMs, such as gpt-4o, claude-3.5-sonnet and gemini-1.5-pro, offering highly accurate and contextually relevant responses.   
--- For Mac users, there are some excellent free and open-source models built in, such as Llama3.2, Gemma2, Phi-3.5 and Mistral, etc. Now after free registration, they can be automatically downloaded, installed and used with just one click on the plugin page, and the model data is all locally stored, ensuring absolute privacy and security of the data 
+  For Mac users, there are some excellent free and open-source models built in, such as Llama3.2, Gemma2, Phi-3.5 and Mistral, etc. Now after free registration, they can be automatically downloaded, installed and used with just one click on the plugin page, and the model data is all locally stored, ensuring absolute privacy and security of the data 
 
 - Annotations and Highlights: Extract annotations and highlights from your PDFs and use them for deeper analysis and conversation.
 
@@ -18,8 +18,8 @@ Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabl
 
 # How to Use
 - Installation:  
--- First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/zotero-chatpdf-v0.0.5/zotero7-chatpdf.xpi). 
--- Open Zotero in the top menu bar, click on `Tools > Add-ons`.  Click on the gear icon at the top right of the window. Click on `Install Add-on From File` and open the downloaded plugin file zotero-chatpdf.xpi.
+  First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/zotero-chatpdf-v0.0.5/zotero7-chatpdf.xpi). 
+  Open Zotero in the top menu bar, click on `Tools > Add-ons`.  Click on the gear icon at the top right of the window. Click on `Install Add-on From File` and open the downloaded plugin file zotero-chatpdf.xpi.
 
 - Startup: In Zotero, press the keys to start the plugin, MacOS(command + enter), Windows(ctrl + enter). 
 
