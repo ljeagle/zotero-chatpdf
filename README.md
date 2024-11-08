@@ -5,11 +5,11 @@ Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabl
 
 ## Key Features
 
-**Lots of SOTA Business Large Language Models For Choosing:**
+**Lots of SOTA Business LLMs For Choosing:**
 
 - Powered by the smartest cutting-edge LLMs, such as gpt-4o, claude-3.5-sonnet and gemini-1.5-pro, offering highly accurate to assist you effectively read and understand PDFs.  
 
-**Lots of the Latest SOTA Open Source Freely Local Large Language Models For Mac Users:**
+**Lots of the Latest SOTA Open Source Freely Local LLMs For Mac Users:**
 
 - There are many SOTA free and open source models built in, such as Llama3.2, Gemma2, Phi-3.5 and Mistral.
   Now after free registration, they can be automatically downloaded, installed and used with just one click on the plugin page, models are all locally stored, ensuring not sending your data to remote LLMs.  
