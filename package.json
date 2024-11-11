@@ -1,12 +1,12 @@
 {
-  "name": "zotero-chatpdf",
+  "name": "zoterochat",
   "version": "0.0.3",
   "description": "Integrates Zotero with ChatPDF",
   "config": {
-    "addonName": "Zotero ChatPDF",
-    "addonID": "zoterochatpdf@chatpdflocal.com",
-    "addonRef": "zoterochatpdf",
-    "addonInstance": "ZoteroChatPDF",
+    "addonName": "ZoteroChat",
+    "addonID": "zoterochat@zoterochat.com",
+    "addonRef": "ZoteroChat",
+    "addonInstance": "ZoteroChat",
     "releasepage": "",
     "updaterdf": ""
   },

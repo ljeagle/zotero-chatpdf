@@ -25,15 +25,12 @@ async function onStartup() {
 
       Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, false)
       if (!await checkFileExist(filename)) {
-          let url = "https://www.chatpdflocal.com/packages/ChatPDFLocal-Zotero.dmg"
+          let url = "https://www.zoterochat.com/packages/ChatPDFLocal-Zotero.dmg"
           await downloadFile(url, filename)
       }
 
       var startLocalServer = Zotero.Prefs.get(`${config.addonRef}.startLocalServer`)
-      var email = Zotero.Prefs.get(`${config.addonRef}.email`) 
-      var token =  Zotero.Prefs.get(`${config.addonRef}.token`) 
        
-
       if (!startLocalServer) {
           await startLocalLLMEngine(filename) 
           Zotero.Prefs.set(`${config.addonRef}.startLocalServer`, true)

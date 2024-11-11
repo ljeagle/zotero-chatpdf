@@ -77830,11 +77830,11 @@ body {
 
   // package.json
   var config = {
-    addonName: "Zotero ChatPDF",
-    addonID: "zoterochatpdf@polygon.org",
-    addonRef: "zoterochatpdf",
-    addonInstance: "ZoteroChatPDF",
-    releasepage: "https://github.com/ljeagle/zotero-chatpdf/releases/latest/download/zotero-chatpdf.xpi",
+    addonName: "ZoteroChat",
+    addonID: "zoterochat@zoterochat.com",
+    addonRef: "ZoteroChat",
+    addonInstance: "ZoteroChat",
+    releasepage: "https://github.com/ljeagle/zotero-chatpdf/releases/latest/download/zoterochat.xpi",
     updaterdf: "https://raw.githubusercontent.com/ljeagle/zotero-chatpdf/bootstrap/update.json"
   };
 

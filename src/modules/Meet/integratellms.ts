@@ -22,7 +22,7 @@ export async function similaritySearch(queryText: string, docs: Document[], obj:
   // Here local JSON files may become larger and larger 
   var embeddingSource = Zotero.Prefs.get(`${config.addonRef}.usingPublisher`)
   if (embeddingSource == "Claude-3") {
-      const views = Zotero.ZoteroChatPDF.views as Views
+      const views = Zotero.ZoteroChat.views as Views
       const openaiApiKey = views.publisher2models.get("OpenAI").apiKey
       const geminiApiKey = views.publisher2models.get("Gemini").apiKey
       if (openaiApiKey != null && openaiApiKey.length > 0) {
@@ -69,7 +69,7 @@ class Embeddings {
   constructor() {
   }
   private async request(input: string[]) {
-    const views = Zotero.ZoteroChatPDF.views as Views
+    const views = Zotero.ZoteroChat.views as Views
     let api = Zotero.Prefs.get(`${config.addonRef}.usingAPIURL`) as string
     var apiKey = Zotero.Prefs.get(`${config.addonRef}.usingAPIKEY`)
     const split_len: number = Zotero.Prefs.get(`${config.addonRef}.embeddingBatchNum`) as number
@@ -218,7 +218,7 @@ export async function getGPTResponse(requestText: string) {
 }
 
 export async function getResponseByOnlineModel(requestText: string) {
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
   const apiKey = Zotero.Prefs.get(`${config.addonRef}.usingAPIKEY`)
   const temperature = Zotero.Prefs.get(`${config.addonRef}.temperature`)
   let apiURL = Zotero.Prefs.get(`${config.addonRef}.usingAPIURL`) as string
@@ -442,7 +442,7 @@ export async function getResponseByLocalLLM(requestText: string) {
   if (publisher != "Local LLM") {
       return
   } 
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
   const temperature = Zotero.Prefs.get(`${config.addonRef}.temperature`)
   const apiURL = Zotero.Prefs.get(`${config.addonRef}.usingAPIURL`) as string
   const model = Zotero.Prefs.get(`${config.addonRef}.usingModel`) as string

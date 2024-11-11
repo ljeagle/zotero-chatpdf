@@ -19,7 +19,7 @@ export async function search(publisher: string, model: string,
   var relatedDocs: Document[] = []
   const url = `http://localhost:9080/search`
   let res 
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
 
   try {
       res = await Zotero.HTTP.request(
@@ -93,7 +93,7 @@ export async function search(publisher: string, model: string,
 
 export async function isDocumentExist(key: string) {
   let res 
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
   const url = `http://localhost:9080/isDocumentExist` 
   try {
         res = await Zotero.HTTP.request(
@@ -131,7 +131,7 @@ export async function isDocumentExist(key: string) {
 
 export async function addDoc(key: string, docs: Document[], type: string) {
   let res 
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
   var textsArray: string[] = []
   var typesArray: string[] = []
   var idsArray: number[] = []
@@ -220,7 +220,7 @@ export async function addDoc(key: string, docs: Document[], type: string) {
 
 export async function selectModel(publisher: string, model: string) {
   let res 
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
   const url = `http://localhost:9080/selectModel` 
   try {
         res = await Zotero.HTTP.request(
@@ -261,7 +261,7 @@ export async function selectModel(publisher: string, model: string) {
 export async function getLocalModelDownloadProgress(model: string) {
   let res
    
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
   const url = `http://localhost:9080/getLocalModelDownloadProgress` 
   try {
         res = await Zotero.HTTP.request(
@@ -309,7 +309,7 @@ export async function getLocalModelDownloadProgress(model: string) {
 
 export async function setApiKey(publisher: string, apiKey: string) {
   let res 
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
   const url = `http://localhost:9080/setLLMApiKey` 
   try {
         res = await Zotero.HTTP.request(
@@ -400,7 +400,7 @@ function parseJsonResults(publisher2models: Map<string, ModelConfig>, publishers
 export async function getSupportedLLMs(publisher2models: Map<string, ModelConfig>, publishers:string[], email: string, token: string) {
   var httpRequestError = false 
   let res 
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
 
   var url = ""
   var trycount = 0 
@@ -459,7 +459,7 @@ export async function getSupportedLLMs(publisher2models: Map<string, ModelConfig
     var trycount = 0 
     
     do { 
-      url = `https://www.chatpdflocal.com/api/supportmodels`
+      url = `https://www.zoterochat.com/api/supportmodels`
       try {
         res = await Zotero.HTTP.request(
           "POST",
@@ -508,8 +508,7 @@ export async function getSupportedLLMs(publisher2models: Map<string, ModelConfig
     var supportedLLMsStr = JSON.stringify(allElements)
     Zotero.Prefs.set(`${config.addonRef}.supportedLLMs`, supportedLLMsStr)
 
-    parseJsonResults(publisher2models, publishers, allElements)// {
-  
+    parseJsonResults(publisher2models, publishers, allElements)
   }
 }
 

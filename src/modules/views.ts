@@ -3,7 +3,7 @@ import Meet from "./Meet/api"
 import Utils from "./utils";
 import { Document } from "langchain/document";
 import { help, fontFamily, defaultTags, parseTag } from "./base"
-import { getLocalModelDownloadProgress, setApiKey, getSupportedLLMs, ModelConfig, selectModel } from "./Meet/chatpdflocal";
+import { getLocalModelDownloadProgress, setApiKey, getSupportedLLMs, ModelConfig, selectModel } from "./Meet/zoterochat";
 import { checkFileExist, startLocalLLMEngine, shutdownLocalLLMEngine } from "../hooks";
 
 
@@ -1218,7 +1218,7 @@ export default class Views {
 		
 		properties: {
 		  value: "",
-		  innerHTML: "Thank you for using zotero-chatpdf!" 
+		  innerHTML: "Thank you for using ZoteroChat!" 
 		}
 	    }, subscriberCloseContainer) as HTMLDivElement
 	   
@@ -1458,7 +1458,7 @@ export default class Views {
 		     let res
 		     if (ok) {
 		       subscribeContainer.style.border = ""
-                       const url = `https://www.chatpdflocal.com/api/zoterosubscribe` 
+                       const url = `https://www.zoterochat.com/api/zoterosubscribe` 
 		       try {
 			 res = await Zotero.HTTP.request(
 		             "POST",
@@ -1576,7 +1576,7 @@ export default class Views {
 		              event.stopPropagation();
 		
 			      let res
-			      const url = `https://www.chatpdflocal.com/api/zoteroactivate`
+			      const url = `https://www.zoterochat.com/api/zoteroactivate`
 			      try {
 				      res = await Zotero.HTTP.request(
 					      "POST",

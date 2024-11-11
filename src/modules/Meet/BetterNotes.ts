@@ -71,7 +71,7 @@ export function insertEditorText(htmlString: string, editor?: any) {
  * Let UI follow this row
  */
 export function follow() {
-  const views = Zotero.ZoteroChatPDF.views as Views
+  const views = Zotero.ZoteroChat.views as Views
   const BNEditorApi = Zotero.BetterNotes.api.editor
   const editor = BNEditorApi.getEditorInstance(Zotero.BetterNotes.data.workspace.mainId);
   let getLine: any = (index: number) => {

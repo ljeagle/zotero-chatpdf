@@ -10,7 +10,7 @@
   },
   "applications": {
     "zotero": {
-      "id": "zoterochatpdf@chatpdflocal.com",
+      "id": "zoterochat@zoterochat.com",
       "update_url": "https://github.com/ljeagle/zotero-chatpdf/updates.json",
       "strict_min_version": "6.999",
       "strict_max_version": "7.0.*"

@@ -2,7 +2,7 @@ import { config } from "../../../package.json";
 import { MD5 } from "crypto-js"
 import { Document } from "langchain/document";
 import { similaritySearch } from "./integratellms";
-import { search, isDocumentExist, addDoc } from "./chatpdflocal";
+import { search, isDocumentExist, addDoc } from "./zoterochat";
 import Meet from "./api";
 import ZoteroToolkit from "zotero-plugin-toolkit";
 
