@@ -220,7 +220,7 @@
          * @param basicTool Pass an BasicTool instance to copy its options.
          */
         constructor(data) {
-          this.patchSign = "zotero-plugin-toolkit@2.0.0";
+          this.patchSign = "zotero-plugin-toolkit@2.3.1";
           this._basicOptions = {
             log: {
               _type: "toolkitlog",

@@ -104,7 +104,6 @@ Meet.Global.input.replace("翻译", "") ||
 Meet.Zotero.getPDFSelection() ||
 Meet.Global.views.messages[0].content
 \}
-
 `,
 `
 #Improve writing[color=#8e44ad][pos=12][trigger=/^润色/]
