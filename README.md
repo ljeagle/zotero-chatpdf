@@ -25,7 +25,7 @@ Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabl
 
 **Installation:** 
 
-- First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/zotero-chatpdf-v0.0.5/zotero7-chatpdf.xpi). 
+- First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/zoterochat-v0.0.6/zoterochat.xpi). 
   Open Zotero in the top menu bar, click on `Tools > Add-ons`.  Click on the gear icon at the top right of the window.  
   Click on `Install Add-on From File` and open the downloaded plugin file zotero-chatpdf.xpi.
 
