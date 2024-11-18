@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "zoterochat",
-  "version": "0.0.3",
+  "version": "0.0.6",
   "description": "Integrates Zotero with ChatPDF",
   "author": "vincent",
   "icons": {
