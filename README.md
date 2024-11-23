@@ -4,7 +4,7 @@ Zotero-ChatPDF
 
 # Important note
 
-We have moved a new [home](https://github.com/papersgpt/papersgpt-for-zotero).   
+We have moved to the new [home](https://github.com/papersgpt/papersgpt-for-zotero).   
 
 New repo address: https://github.com/papersgpt/papersgpt-for-zotero   
 
