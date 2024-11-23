@@ -4,7 +4,7 @@ Zotero-ChatPDF
 
 # Important note
 
-We have moved a new [home](https://github.com/papersgpt/papersgpt-for-zotero), this repo will not be maintained from now on.   
+We have moved a new [home](https://github.com/papersgpt/papersgpt-for-zotero).   
 
 New repo address: https://github.com/papersgpt/papersgpt-for-zotero   
 
@@ -34,9 +34,9 @@ Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabl
 
 **Installation:** 
 
-- First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/papersgpt-for-zotero-v0.0.1/papersgpt.xpi). 
+- First download papersgpt.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/papersgpt-for-zotero-v0.0.1/papersgpt.xpi). 
   Open Zotero in the top menu bar, click on `Tools > Add-ons`.  Click on the gear icon at the top right of the window.  
-  Click on `Install Add-on From File` and open the downloaded plugin file zotero-chatpdf.xpi.
+  Click on `Install Add-on From File` and open the downloaded plugin file papersgpt.xpi.
 
 **Startup:**
 
@@ -66,12 +66,12 @@ Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabl
 If you like to build the plugin by yourself, do as the below commands:
 
 ```bash
-git clone https://github.com/ljeagle/zotero-chatpdf.git
-cd zotero-chatpdf
+git clone https://github.com/papersgpt/papersgpt-for-zotero.git
+cd papersgpt-for-zotero
 npm install
 npm run build
 ```
-The plugin file(zotero-chatpdf.xpi) will be built and generated into the build directory
+The plugin file(papersgpt.xpi) will be built and generated into the build directory
  
 ## Use Cases
 
