@@ -8,6 +8,12 @@ We have moved a new [home](https://github.com/papersgpt/papersgpt-for-zotero).
 
 New repo address: https://github.com/papersgpt/papersgpt-for-zotero   
 
+The following latest and smartest models there:  
+  **gemini-exp-1121**  
+  **gpt-4o-2024-11-20**  
+  **gemini-exp-1114**  
+  **claude-3.5-sonnet**  
+
 ## Introduction
 
 Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabling effortless interaction with PDF documents through state-of-the-art (SOTA) large language models (LLMs). It offers users the ability to ask questions, extract insights, and converse with PDFs directly, providing a powerful research assistant for scholars, researchers, and anyone who deals with large amounts of text in PDF format.
