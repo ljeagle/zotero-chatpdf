@@ -2,11 +2,11 @@
 Zotero-ChatPDF
 </h1>
 
-# Important Note
+# Important note
 
 We have moved a new [home](https://github.com/papersgpt/papersgpt-for-zotero), this repo will not be maintained from now on.   
 
-New repo address: https://github.com/papersgpt/papersgpt-for-zotero 
+New repo address: https://github.com/papersgpt/papersgpt-for-zotero   
 
 ## Introduction
 
@@ -34,7 +34,7 @@ Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabl
 
 **Installation:** 
 
-- First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/zoterochat-v0.0.6/zoterochat.xpi). 
+- First download zotero-chatpdf.xpi plugin [here](https://github.com/ljeagle/zotero-chatpdf/releases/download/papersgpt-for-zotero-v0.0.1/papersgpt.xpi). 
   Open Zotero in the top menu bar, click on `Tools > Add-ons`.  Click on the gear icon at the top right of the window.  
   Click on `Install Add-on From File` and open the downloaded plugin file zotero-chatpdf.xpi.
 
