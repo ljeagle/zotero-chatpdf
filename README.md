@@ -13,6 +13,7 @@ The following latest and smartest models there:
   **[gpt-4o-2024-11-20](https://github.com/papersgpt/papersgpt-for-zotero)**  
   **[gemini-exp-1114](https://github.com/papersgpt/papersgpt-for-zotero)**  
   **[claude-3.5-sonnet](https://github.com/papersgpt/papersgpt-for-zotero)**  
+  **[Open Souce o1 model Marco-o1](https://github.com/papersgpt/papersgpt-for-zotero)**  
 
 ## Introduction
 
