@@ -32,7 +32,7 @@ Zotero-ChatPDF is an advanced tool that integrates seamlessly with Zotero, enabl
 - There are many SOTA free and open source models built in, such as Llama3.2, Gemma2, Phi-3.5 and Mistral.
   Now after free registration, they can be automatically downloaded, installed and used with just one click on the plugin page, models are all locally stored, ensuring not sending your data to remote LLMs.  
   Of course, these models can be switched as your will, and smarter Open Source LLMs in the future would be accessed as soon as possible.
-- 100% Privacy and Safe of Your Personal Data. Besides local LLMs, the RAG models of embeddings, vector database and rerank are all built and runned locally, There will be no data leakage and it can be used normally even on the plane when the internet can't be connected.
+- 100% Privacy and Safe of Your Personal Data. Besides local LLMs, the RAG modules of embeddings, vector database and rerank are all built and runned locally, There will be no data leakage and it can be used normally even on the plane when the internet can't be connected.
 
 **Seamless Zotero Integration:**
 
