@@ -15,7 +15,7 @@ The following latest and smartest models there:
   **[LearnLM-1.5-pro](https://github.com/papersgpt/papersgpt-for-zotero)**  
   **[claude-3.5-sonnet](https://github.com/papersgpt/papersgpt-for-zotero)**  
   **[Open Souce o1 model Marco-o1](https://github.com/papersgpt/papersgpt-for-zotero)**  
-  **[Open Souce o1 model QwQ-32B-Preview](https://github.com/papersgpt/papersgpt-for-zotero)**  
+  **[Open Souce o1 model QwQ-32B-Preview](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:   
 
 ## Introduction
 
