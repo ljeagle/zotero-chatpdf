@@ -9,9 +9,9 @@ We have moved to the new [home](https://github.com/papersgpt/papersgpt-for-zoter
 New repo address: https://github.com/papersgpt/papersgpt-for-zotero   
 
 The following latest and smartest models there:  
-  **[gemini-exp-1121](https://github.com/papersgpt/papersgpt-for-zotero)** **#1 on Chatbot Arena** :sparkles: :fire:  
+  **[gemini-exp-1206](https://github.com/papersgpt/papersgpt-for-zotero)** **#1 on Chatbot Arena** :sparkles: :fire:  
   **[gpt-4o-2024-11-20](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:   
-  **[gemini-exp-1114](https://github.com/papersgpt/papersgpt-for-zotero)**  
+  **[gemini-exp-1121](https://github.com/papersgpt/papersgpt-for-zotero)**  
   **[LearnLM-1.5-pro](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:  
   **[claude-3.5-sonnet](https://github.com/papersgpt/papersgpt-for-zotero)**  
   **[Open Souce o1 model Marco-o1](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:  
