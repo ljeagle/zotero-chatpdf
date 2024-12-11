@@ -9,6 +9,7 @@ We have moved to the new [home](https://github.com/papersgpt/papersgpt-for-zoter
 New repo address: https://github.com/papersgpt/papersgpt-for-zotero   
 
 The following latest and smartest models there:  
+  **[gemini-2.0-flash-exp](https://github.com/papersgpt/papersgpt-for-zotero)** :sparkles: :fire:  
   **[gemini-exp-1206](https://github.com/papersgpt/papersgpt-for-zotero)** **#1 on Chatbot Arena** :sparkles: :fire:  
   **[gpt-4o-2024-11-20](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:   
   **[gemini-exp-1121](https://github.com/papersgpt/papersgpt-for-zotero)**  
