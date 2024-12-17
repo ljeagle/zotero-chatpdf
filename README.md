@@ -15,8 +15,9 @@ The following latest and smartest models there:
   **[gemini-exp-1121](https://github.com/papersgpt/papersgpt-for-zotero)**  
   **[LearnLM-1.5-pro](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:  
   **[claude-3.5-sonnet](https://github.com/papersgpt/papersgpt-for-zotero)**  
-  **[Open Souce o1 model Marco-o1](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:  
-  **[Open Souce o1 model QwQ-32B-Preview](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:   
+  **[Open Source model Phi 4](https://github.com/papersgpt/papersgpt-for-zotero)** :sparkles: :fire:  
+  **[Open Source o1 model Marco-o1](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:  
+  **[Open Source o1 model QwQ-32B-Preview](https://github.com/papersgpt/papersgpt-for-zotero)** :fire:   
 
 ## Introduction
 
